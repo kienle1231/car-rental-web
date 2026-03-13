@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "scripts": {
     "install-all": "cd frontend && npm install && cd ../backend && npm install",
-    "build": "chmod +x build.sh && ./build.sh",
+    "build": "cd frontend && npm install && npm run build && cd .. && mkdir -p backend/public && cp -r frontend/dist/* backend/public/",
     "start": "node index.js"
   },
   "engines": {
