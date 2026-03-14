@@ -19,11 +19,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/cars', carRoutes);
 app.use('/api/bookings', bookingRoutes);
 
-// Serve Frontend (React build)
-app.use(express.static(path.join(__dirname, '../public')));
-app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, '../public', 'index.html'));
-});
+// Static serving is handled by Vercel directly via vercel.json
 
 // Database Connection
 mongoose.connect(process.env.MONGODB_URI)
