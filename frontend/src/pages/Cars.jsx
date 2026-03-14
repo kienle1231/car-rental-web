@@ -28,7 +28,7 @@ const Cars = () => {
       if (type) params.type = type;
       if (search) params.search = search;
       const { data } = await getCarsAPI(params);
-      setCars(data);
+      setCars(Array.isArray(data) ? data : (data?.data || []));
     } catch (err) { console.error(err); }
     setLoading(false);
   };
@@ -89,13 +89,13 @@ const Cars = () => {
 
         {/* Cars Grid */}
         {loading ? <LoadingSkeleton /> : (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
             {cars.length > 0 ? cars.map((car, i) => (
               <motion.div key={car._id} initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
                 <CarCard car={car} />
               </motion.div>
             )) : (
-              <div className="col-span-3 text-center py-20 text-gray-500">
+              <div className="col-span-4 text-center py-20 text-gray-500">
                 <p className="text-xl">No cars found matching your criteria.</p>
               </div>
             )}

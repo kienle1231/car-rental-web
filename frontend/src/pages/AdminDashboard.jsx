@@ -1,8 +1,23 @@
-import { useState, useEffect } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Users, Car, Calendar, DollarSign, Trash2, Lock, Unlock, Check, X, BarChart3, UserCog, CarFront, BookOpen } from 'lucide-react';
-import { getStatsAPI, getUsersAPI, deleteUserAPI, toggleUserStatusAPI, getCarsAPI, createCarAPI, deleteCarAPI, getAllBookingsAPI, updateBookingStatusAPI } from '../services/api';
+import { Users, Car, Calendar, DollarSign, Trash2, Lock, Unlock, Check, X, BarChart3, UserCog, CarFront, BookOpen, TrendingUp } from 'lucide-react';
+import { Line, Bar, Doughnut } from 'react-chartjs-2';
+import {
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  BarElement,
+  ArcElement,
+  Tooltip,
+  Legend,
+  Filler
+} from 'chart.js';
+import { getStatsAPI, getUsersAPI, deleteUserAPI, toggleUserStatusAPI, getCarsAPI, createCarAPI, deleteCarAPI, getAllBookingsAPI, updateBookingStatusAPI, getAvailabilityCalendarAPI, getPricingSurgesAPI } from '../services/api';
 import toast from 'react-hot-toast';
+
+ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, BarElement, ArcElement, Tooltip, Legend, Filler);
 
 const tabs = [
   { id: 'dashboard', label: 'Dashboard', icon: <BarChart3 className="w-4 h-4" /> },
@@ -19,6 +34,8 @@ const AdminDashboard = () => {
   const [bookings, setBookings] = useState([]);
   const [showAddCar, setShowAddCar] = useState(false);
   const [newCar, setNewCar] = useState({ name:'', brand:'', pricePerDay:'', type:'Sedan', description:'', imageUrl:'', seats:5, transmission:'Auto', fuelType:'Gasoline', rating:4.5 });
+  const [calendarBookings, setCalendarBookings] = useState([]);
+  const [pricingSurges, setPricingSurges] = useState([]);
 
   useEffect(() => {
     loadData();
@@ -26,13 +43,20 @@ const AdminDashboard = () => {
 
   const loadData = async () => {
     try {
-      const [statsRes, usersRes, carsRes, bookingsRes] = await Promise.all([
-        getStatsAPI(), getUsersAPI(), getCarsAPI(), getAllBookingsAPI()
+      const [statsRes, usersRes, carsRes, bookingsRes, availabilityRes, surgeRes] = await Promise.all([
+        getStatsAPI(),
+        getUsersAPI(),
+        getCarsAPI(),
+        getAllBookingsAPI(),
+        getAvailabilityCalendarAPI(),
+        getPricingSurgesAPI()
       ]);
       setStats(statsRes.data);
       setUsers(usersRes.data);
       setCars(carsRes.data);
       setBookings(bookingsRes.data);
+      setCalendarBookings(availabilityRes.data || []);
+      setPricingSurges(surgeRes.data || []);
     } catch (err) { console.error(err); }
   };
 
@@ -57,6 +81,82 @@ const AdminDashboard = () => {
     { icon: <DollarSign className="w-6 h-6" />, label: 'Revenue', value: `$${stats.revenue || 0}`, color: 'from-yellow-400 to-amber-500' },
   ];
 
+  const monthLabels = useMemo(() => {
+    return Array.from({ length: 6 }).map((_, idx) => {
+      const date = new Date();
+      date.setMonth(date.getMonth() - (5 - idx));
+      return `${date.getFullYear()}-${date.getMonth() + 1}`;
+    });
+  }, []);
+
+  const monthlyRevenue = useMemo(() => {
+    return monthLabels.map((key) => stats.monthlyRevenue?.[key] || 0);
+  }, [monthLabels, stats.monthlyRevenue]);
+
+  const revenueChartData = {
+    labels: monthLabels.map((label) => {
+      const [year, month] = label.split('-');
+      return new Date(year, Number(month) - 1).toLocaleDateString('en-US', { month: 'short' });
+    }),
+    datasets: [
+      {
+        label: 'Revenue',
+        data: monthlyRevenue,
+        borderColor: '#f59e0b',
+        backgroundColor: 'rgba(245, 158, 11, 0.2)',
+        tension: 0.4,
+        fill: true,
+        pointRadius: 3,
+        pointBackgroundColor: '#f59e0b'
+      }
+    ]
+  };
+
+  const bookingsByLocation = useMemo(() => {
+    const entries = Object.entries(stats.bookingsByLocation || {});
+    entries.sort((a, b) => b[1] - a[1]);
+    return entries.slice(0, 6);
+  }, [stats.bookingsByLocation]);
+
+  const locationChartData = {
+    labels: bookingsByLocation.map(([location]) => location),
+    datasets: [
+      {
+        label: 'Bookings',
+        data: bookingsByLocation.map(([, value]) => value),
+        backgroundColor: ['#f59e0b', '#38bdf8', '#22c55e', '#a855f7', '#f97316', '#f43f5e'],
+        borderRadius: 12
+      }
+    ]
+  };
+
+  const bookingStatusStats = stats.bookingStatusStats || { Pending: 0, Approved: 0, Completed: 0, Cancelled: 0 };
+
+  const statusChartData = {
+    labels: Object.keys(bookingStatusStats),
+    datasets: [
+      {
+        data: Object.values(bookingStatusStats),
+        backgroundColor: ['#facc15', '#38bdf8', '#22c55e', '#f43f5e'],
+        borderWidth: 0
+      }
+    ]
+  };
+
+  const chartOptions = {
+    responsive: true,
+    plugins: { legend: { display: false } },
+    scales: {
+      x: { ticks: { color: '#94a3b8' }, grid: { display: false } },
+      y: { ticks: { color: '#94a3b8' }, grid: { color: 'rgba(148, 163, 184, 0.1)' } }
+    }
+  };
+
+  const donutOptions = {
+    responsive: true,
+    plugins: { legend: { display: true, labels: { color: '#e2e8f0' } } }
+  };
+
   return (
     <div className="pt-24 pb-16 min-h-screen">
       <div className="max-w-7xl mx-auto px-6">
@@ -77,16 +177,162 @@ const AdminDashboard = () => {
         <AnimatePresence mode="wait">
           {/* DASHBOARD TAB */}
           {tab === 'dashboard' && (
-            <motion.div key="dash" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+            <motion.div key="dash" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-8">
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                 {statCards.map((s, i) => (
                   <motion.div key={i} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.1 }}
-                    className="bg-white/5 border border-white/10 rounded-2xl p-6 hover:border-white/20 transition">
+                    className="bg-white/10 border border-white/10 rounded-2xl p-6 hover:border-white/20 transition backdrop-blur-xl shadow-xl shadow-black/20">
                     <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${s.color} flex items-center justify-center text-white mb-4 shadow-lg`}>{s.icon}</div>
-                    <p className="text-sm text-gray-500">{s.label}</p>
+                    <p className="text-sm text-gray-400">{s.label}</p>
                     <p className="text-3xl font-black mt-1">{s.value}</p>
                   </motion.div>
                 ))}
+              </div>
+
+              <div className="grid grid-cols-1 lg:grid-cols-[1.35fr_0.65fr] gap-6">
+                <div className="bg-white/10 border border-white/10 rounded-3xl p-6 backdrop-blur-xl shadow-xl shadow-black/20">
+                  <div className="flex items-center justify-between mb-6">
+                    <div>
+                      <p className="text-sm text-gray-400">Revenue Overview</p>
+                      <h3 className="text-2xl font-bold mt-1">Revenue by Month</h3>
+                    </div>
+                    <div className="flex items-center gap-2 text-sm text-green-400">
+                      <TrendingUp className="w-4 h-4" /> +12.8%
+                    </div>
+                  </div>
+                  <Line data={revenueChartData} options={chartOptions} height={120} />
+                </div>
+
+                <div className="bg-white/10 border border-white/10 rounded-3xl p-6 backdrop-blur-xl shadow-xl shadow-black/20">
+                  <div className="mb-6">
+                    <p className="text-sm text-gray-400">Status Mix</p>
+                    <h3 className="text-2xl font-bold mt-1">Booking Status</h3>
+                  </div>
+                  <Doughnut data={statusChartData} options={donutOptions} height={120} />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 lg:grid-cols-[1.1fr_0.9fr] gap-6">
+                <div className="bg-white/10 border border-white/10 rounded-3xl p-6 backdrop-blur-xl shadow-xl shadow-black/20">
+                  <div className="mb-6">
+                    <p className="text-sm text-gray-400">Bookings by Location</p>
+                    <h3 className="text-2xl font-bold mt-1">City Demand</h3>
+                  </div>
+                  <Bar data={locationChartData} options={chartOptions} height={120} />
+                </div>
+
+                <div className="bg-white/10 border border-white/10 rounded-3xl p-6 backdrop-blur-xl shadow-xl shadow-black/20">
+                  <div className="mb-6">
+                    <p className="text-sm text-gray-400">Active Users</p>
+                    <h3 className="text-2xl font-bold mt-1">User Activity</h3>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div className="bg-black/30 border border-white/10 rounded-2xl p-4">
+                      <p className="text-xs text-gray-500">Total Users</p>
+                      <p className="text-2xl font-bold mt-2">{stats.totalUsers || 0}</p>
+                    </div>
+                    <div className="bg-black/30 border border-white/10 rounded-2xl p-4">
+                      <p className="text-xs text-gray-500">Active Users</p>
+                      <p className="text-2xl font-bold mt-2">{stats.activeUsers || 0}</p>
+                    </div>
+                    <div className="bg-black/30 border border-white/10 rounded-2xl p-4">
+                      <p className="text-xs text-gray-500">New This Month</p>
+                      <p className="text-2xl font-bold mt-2">{stats.newUsersThisMonth || 0}</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 lg:grid-cols-[0.7fr_1.3fr] gap-6">
+                <div className="bg-white/10 border border-white/10 rounded-3xl p-6 backdrop-blur-xl shadow-xl shadow-black/20">
+                  <div className="mb-6">
+                    <p className="text-sm text-gray-400">Most Rented Cars</p>
+                    <h3 className="text-2xl font-bold mt-1">Top Cars</h3>
+                  </div>
+                  <div className="space-y-4">
+                    {stats.topCars?.length > 0 ? stats.topCars.map((car, index) => (
+                      <div key={car.name} className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <span className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-sm">{index + 1}</span>
+                          <img src={car.imageUrl} alt={car.name} className="w-12 h-12 rounded-xl object-cover" />
+                          <div>
+                            <p className="text-sm font-semibold">{car.brand} {car.model}</p>
+                            <p className="text-xs text-gray-500">{car.count} bookings</p>
+                          </div>
+                        </div>
+                        <span className="text-yellow-400 text-sm font-semibold">{car.count}</span>
+                      </div>
+                    )) : (
+                      <p className="text-sm text-gray-500">No booking data yet.</p>
+                    )}
+                  </div>
+                </div>
+
+                <div className="bg-white/10 border border-white/10 rounded-3xl p-6 backdrop-blur-xl shadow-xl shadow-black/20">
+                  <div className="mb-6">
+                    <p className="text-sm text-gray-400">Highest Demand Cars</p>
+                    <h3 className="text-2xl font-bold mt-1">Pricing Surges</h3>
+                  </div>
+                  <div className="space-y-4">
+                    {pricingSurges.length > 0 ? pricingSurges.map((car) => {
+                      const surgeColor = car.surgePercentage > 20 ? 'text-red-400' : car.surgePercentage > 10 ? 'text-orange-400' : 'text-green-400';
+                      return (
+                        <div key={car.carId} className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <img src={car.image} alt={`${car.brand} ${car.model}`} className="w-12 h-12 rounded-xl object-cover" />
+                            <div>
+                              <p className="text-sm font-semibold">{car.brand} {car.model}</p>
+                              <p className="text-xs text-gray-500">Base ${car.basePrice} → ${car.dynamicPrice}</p>
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <p className={`text-sm font-semibold ${surgeColor}`}>{car.surgePercentage}%</p>
+                            {car.surgePercentage > 20 && (
+                              <span className="text-xs text-red-400">🔥 Hot demand</span>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    }) : (
+                      <p className="text-sm text-gray-500">No surge data yet.</p>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-white/10 border border-white/10 rounded-3xl p-6 backdrop-blur-xl shadow-xl shadow-black/20">
+                <div className="mb-6">
+                  <p className="text-sm text-gray-400">Recent Bookings</p>
+                  <h3 className="text-2xl font-bold mt-1">Latest Activity</h3>
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="text-left text-gray-400 border-b border-white/10">
+                        <th className="py-3">Customer</th>
+                        <th className="py-3">Car</th>
+                        <th className="py-3">Dates</th>
+                        <th className="py-3">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {bookings.slice(0, 5).map((booking) => (
+                        <tr key={booking._id} className="border-b border-white/5">
+                          <td className="py-3">{booking.user?.name || 'Unknown'}</td>
+                          <td className="py-3 text-gray-400">{booking.car?.name || 'Unknown'}</td>
+                          <td className="py-3 text-gray-400">
+                            {new Date(booking.pickupDate).toLocaleDateString()} → {new Date(booking.returnDate).toLocaleDateString()}
+                          </td>
+                          <td className="py-3">
+                            <span className={`px-3 py-1 rounded-full text-xs font-medium ${booking.status === 'Pending' ? 'bg-yellow-400/10 text-yellow-400' : booking.status === 'Approved' ? 'bg-green-400/10 text-green-400' : 'bg-red-400/10 text-red-400'}`}>
+                              {booking.status}
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             </motion.div>
           )}

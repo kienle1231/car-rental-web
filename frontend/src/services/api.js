@@ -22,6 +22,7 @@ export const toggleUserStatusAPI = (id) => API.put(`/auth/users/${id}/status`);
 // Cars
 export const getCarsAPI = (params) => API.get('/cars', { params });
 export const getCarByIdAPI = (id) => API.get(`/cars/${id}`);
+export const getCarPricingAPI = (id, params) => API.get(`/cars/${id}/pricing`, { params });
 export const createCarAPI = (data) => API.post('/cars', data);
 export const updateCarAPI = (id, data) => API.put(`/cars/${id}`, data);
 export const deleteCarAPI = (id) => API.delete(`/cars/${id}`);
@@ -33,3 +34,6 @@ export const getAllBookingsAPI = () => API.get('/bookings/admin');
 export const updateBookingStatusAPI = (id, status) => API.put(`/bookings/admin/${id}`, { status });
 export const deleteBookingAPI = (id) => API.delete(`/bookings/admin/${id}`);
 export const getStatsAPI = () => API.get('/bookings/admin/stats');
+export const getAvailabilityByCarAPI = (carId) => API.get(`/bookings/availability/${carId}`);
+export const getAvailabilityCalendarAPI = () => API.get('/bookings/admin/availability');
+export const getPricingSurgesAPI = () => API.get('/analytics/pricing-surges');
