@@ -15,6 +15,7 @@ API.interceptors.request.use((config) => {
 // Auth
 export const loginAPI = (data) => API.post('/auth/login', data);
 export const registerAPI = (data) => API.post('/auth/register', data);
+export const googleLoginAPI = (data) => API.post('/auth/google', data);
 export const getUsersAPI = () => API.get('/auth/users');
 export const deleteUserAPI = (id) => API.delete(`/auth/users/${id}`);
 export const toggleUserStatusAPI = (id) => API.put(`/auth/users/${id}/status`);
