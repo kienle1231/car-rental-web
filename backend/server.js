@@ -20,9 +20,9 @@ app.use('/api/cars', carRoutes);
 app.use('/api/bookings', bookingRoutes);
 
 // Serve Frontend (React build)
-app.use(express.static(path.join(__dirname, 'public')));
+app.use(express.static(path.join(__dirname, '../public')));
 app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+  res.sendFile(path.join(__dirname, '../public', 'index.html'));
 });
 
 // Database Connection
