@@ -15,6 +15,7 @@ import MyBookings from './pages/MyBookings';
 import AdminDashboard from './pages/AdminDashboard';
 import Checkout from './pages/Checkout';
 import BookingConfirmation from './pages/BookingConfirmation';
+import FloatingAIButton from './components/FloatingAIButton';
 
 const PageTransition = ({ children }) => (
   <motion.div
@@ -68,6 +69,7 @@ function App() {
             <AnimatedRoutes />
           </main>
           <Footer />
+          <FloatingAIButton />
           <Toaster
             position="top-right"
             toastOptions={{

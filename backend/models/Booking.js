@@ -20,7 +20,9 @@ const BookingSchema = new mongoose.Schema({
   paymentMethod: { type: String, default: 'card' },
   transactionId: { type: String },
   totalPrice: { type: Number, required: true },
-  status: { type: String, enum: ['Pending', 'Approved', 'Completed', 'Cancelled'], default: 'Pending' },
+  lateFee: { type: Number, default: 0 },
+  actualReturnDate: { type: Date },
+  status: { type: String, enum: ['Pending', 'Approved', 'Completed', 'Cancelled', 'Overdue'], default: 'Pending' },
 }, { timestamps: true });
 
 module.exports = mongoose.model('Booking', BookingSchema);

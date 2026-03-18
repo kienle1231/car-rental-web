@@ -99,3 +99,40 @@ exports.toggleUserStatus = async (req, res) => {
     res.json(user);
   } catch (error) { res.status(500).json({ error: error.message }); }
 };
+
+exports.forgotPassword = async (req, res) => {
+  try {
+    const { email } = req.body;
+    const user = await User.findOne({ email });
+    if (!user) return res.status(404).json({ message: 'User not found' });
+
+    // Generate 6-digit code
+    const resetCode = Math.floor(100000 + Math.random() * 900000).toString();
+    user.resetPasswordToken = resetCode;
+    user.resetPasswordExpires = Date.now() + 3600000; // 1 hour
+    await user.save();
+
+    // In production, send via email. For demo, we return it.
+    res.json({ message: 'Reset code generated', resetCode });
+  } catch (error) { res.status(500).json({ error: error.message }); }
+};
+
+exports.resetPassword = async (req, res) => {
+  try {
+    const { email, code, newPassword } = req.body;
+    const user = await User.findOne({ 
+      email, 
+      resetPasswordToken: code, 
+      resetPasswordExpires: { $gt: Date.now() } 
+    });
+
+    if (!user) return res.status(400).json({ message: 'Invalid or expired reset code' });
+
+    user.password = await bcrypt.hash(newPassword, 10);
+    user.resetPasswordToken = undefined;
+    user.resetPasswordExpires = undefined;
+    await user.save();
+
+    res.json({ message: 'Password has been reset' });
+  } catch (error) { res.status(500).json({ error: error.message }); }
+};

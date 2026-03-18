@@ -38,3 +38,4 @@ export const getStatsAPI = () => API.get('/bookings/admin/stats');
 export const getAvailabilityByCarAPI = (carId) => API.get(`/bookings/availability/${carId}`);
 export const getAvailabilityCalendarAPI = () => API.get('/bookings/admin/availability');
 export const getPricingSurgesAPI = () => API.get('/analytics/pricing-surges');
+export const chatAIAPI = (data) => API.post('/ai/chat', data);

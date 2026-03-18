@@ -21,10 +21,10 @@ exports.createBooking = async (req, res) => {
       totalPrice
     } = req.body;
 
-    const approvedBookings = await Booking.find({ car, status: 'Approved' });
+    const existingBookings = await Booking.find({ car, status: { $in: ['Approved', 'Pending'] } });
     const requestedStart = new Date(pickupDate);
     const requestedEnd = new Date(returnDate);
-    const conflict = approvedBookings.some((booking) => {
+    const conflict = existingBookings.some((booking) => {
       return hasOverlap(requestedStart, requestedEnd, new Date(booking.pickupDate), new Date(booking.returnDate));
     });
 
@@ -85,11 +85,70 @@ exports.getAllBookings = async (req, res) => {
   } catch (error) { res.status(500).json({ error: error.message }); }
 };
 
+exports.extendBooking = async (req, res) => {
+  try {
+    const { newReturnDate } = req.body;
+    const booking = await Booking.findById(req.params.id).populate('car');
+
+    if (!booking) return res.status(404).json({ message: 'Booking not found' });
+    if (booking.user.toString() !== req.user.id) return res.status(403).json({ message: 'Unauthorized' });
+
+    // Check for conflicts
+    const requestedStart = new Date(booking.returnDate);
+    const requestedEnd = new Date(newReturnDate);
+    
+    const approvedBookings = await Booking.find({ 
+      car: booking.car._id, 
+      status: 'Approved',
+      _id: { $ne: booking._id }
+    });
+
+    const conflict = approvedBookings.some((b) => {
+      return hasOverlap(requestedStart, requestedEnd, new Date(b.pickupDate), new Date(b.returnDate));
+    });
+
+    if (conflict) {
+      return res.status(409).json({ error: 'Cannot extend. Car is already reserved for those dates.' });
+    }
+
+    // Calculate extra price
+    const extraDays = Math.ceil((requestedEnd - requestedStart) / (1000 * 60 * 60 * 24));
+    const extraPrice = extraDays * booking.car.pricePerDay;
+
+    booking.returnDate = requestedEnd;
+    booking.totalPrice += extraPrice;
+    await booking.save();
+
+    res.json(booking);
+  } catch (error) { res.status(500).json({ error: error.message }); }
+};
+
 exports.updateBookingStatus = async (req, res) => {
   try {
-    const booking = await Booking.findByIdAndUpdate(
-      req.params.id, { status: req.body.status }, { new: true }
-    );
+    const { status, actualReturnDate } = req.body;
+    const booking = await Booking.findById(req.params.id).populate('car');
+    
+    if (!booking) return res.status(404).json({ message: 'Booking not found' });
+
+    booking.status = status;
+
+    if (status === 'Completed') {
+      const returnDate = actualReturnDate ? new Date(actualReturnDate) : new Date();
+      booking.actualReturnDate = returnDate;
+
+      const scheduledReturn = new Date(booking.returnDate);
+      if (returnDate > scheduledReturn) {
+        const diffMs = returnDate - scheduledReturn;
+        const diffHours = Math.ceil(diffMs / (1000 * 60 * 60));
+        
+        // Penalty: (Price/24) * hours * 1.5
+        const hourlyRate = booking.car.pricePerDay / 24;
+        booking.lateFee = Math.round(hourlyRate * diffHours * 1.5);
+        booking.totalPrice += booking.lateFee;
+      }
+    }
+
+    await booking.save();
     res.json(booking);
   } catch (error) { res.status(400).json({ error: error.message }); }
 };
@@ -97,6 +156,66 @@ exports.updateBookingStatus = async (req, res) => {
 exports.deleteBooking = async (req, res) => {
   try { await Booking.findByIdAndDelete(req.params.id); res.json({ message: 'Booking deleted' }); }
   catch (error) { res.status(500).json({ error: error.message }); }
+};
+
+// Customer cancel own booking
+exports.cancelBooking = async (req, res) => {
+  try {
+    const booking = await Booking.findById(req.params.id);
+    if (!booking) return res.status(404).json({ message: 'Booking not found' });
+    if (booking.user.toString() !== req.user.id) {
+      return res.status(403).json({ message: 'Not authorized to cancel this booking' });
+    }
+    if (booking.status === 'Completed') {
+      return res.status(400).json({ message: 'Cannot cancel a completed booking' });
+    }
+    if (booking.status === 'Cancelled') {
+      return res.status(400).json({ message: 'Booking is already cancelled' });
+    }
+
+    const now = new Date();
+    const pickup = new Date(booking.pickupDate);
+    const diffMs = pickup - now;
+    const diffHours = diffMs / (1000 * 60 * 60);
+
+    if (diffHours < 24 && booking.status === 'Approved') {
+      return res.status(400).json({ message: 'Cancellation must be requested at least 24 hours before pickup.' });
+    }
+
+    booking.status = 'Cancelled';
+    await booking.save();
+    res.json(booking);
+  } catch (error) { res.status(500).json({ error: error.message }); }
+};
+
+// Admin complete booking (return car)
+exports.completeBooking = async (req, res) => {
+  try {
+    const booking = await Booking.findById(req.params.id).populate('car');
+    if (!booking) return res.status(404).json({ message: 'Booking not found' });
+    if (booking.status === 'Completed') {
+      return res.status(400).json({ message: 'Booking is already completed' });
+    }
+    if (booking.status === 'Cancelled') {
+      return res.status(400).json({ message: 'Cannot complete a cancelled booking' });
+    }
+
+    const returnDate = new Date();
+    booking.actualReturnDate = returnDate;
+    booking.status = 'Completed';
+
+    const scheduledReturn = new Date(booking.returnDate);
+    if (returnDate > scheduledReturn) {
+      const diffMs = returnDate - scheduledReturn;
+      const diffHours = Math.ceil(diffMs / (1000 * 60 * 60));
+      const hourlyRate = booking.car.pricePerDay / 24;
+      booking.lateFee = Math.round(hourlyRate * diffHours * 1.5);
+      booking.totalPrice += booking.lateFee;
+    }
+
+    await booking.save();
+    res.json(booking);
+  } catch (error) { res.status(500).json({ error: error.message }); }
 };
 
 exports.getStats = async (req, res) => {
