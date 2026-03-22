@@ -3,7 +3,7 @@ const { calculateDynamicPrice } = require('../utils/pricing');
 
 exports.getCars = async (req, res) => {
   try {
-    const { brand, type, minPrice, maxPrice, search } = req.query;
+    const { brand, type, minPrice, maxPrice, search, lat, lng, radius } = req.query;
     let query = {};
     if (brand) query.brand = brand;
     if (type) query.type = type;
@@ -12,7 +12,28 @@ exports.getCars = async (req, res) => {
       if (minPrice) query.pricePerDay.$gte = Number(minPrice);
       if (maxPrice) query.pricePerDay.$lte = Number(maxPrice);
     }
-    if (search) query.name = { $regex: search, $options: 'i' };
+    if (search) {
+      query.$or = [
+        { name: { $regex: search, $options: 'i' } },
+        { location: { $regex: search, $options: 'i' } }
+      ];
+    }
+
+    if (lat && lng) {
+      const maxDistance = radius ? Number(radius) * 1000 : 50000; // Default 50km
+      const cars = await Car.aggregate([
+        {
+          $geoNear: {
+            near: { type: 'Point', coordinates: [Number(lng), Number(lat)] },
+            distanceField: 'calculatedDistance',
+            maxDistance: maxDistance,
+            spherical: true,
+            query: query
+          }
+        }
+      ]);
+      return res.json(cars);
+    }
 
     const cars = await Car.find(query);
     res.json(cars);

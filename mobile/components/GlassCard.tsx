@@ -36,16 +36,8 @@ const styles = StyleSheet.create({
   },
   androidFallback: {
     backgroundColor: 'rgba(15, 23, 42, 0.8)',
-    ...Platform.select({
-      web: { boxShadow: '0px 10px 20px rgba(0,0,0,0.3)' },
-      default: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 10 },
-        shadowOpacity: 0.3,
-        shadowRadius: 20,
-        elevation: 5,
-      }
-    }),
+    boxShadow: '0px 10px 20px rgba(0,0,0,0.3)',
+    elevation: 5,
   },
 });
 

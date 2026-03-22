@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   FlatList,
   StyleSheet,
@@ -8,11 +8,12 @@ import {
   StatusBar,
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
+import * as Location from 'expo-location';
 import Animated, {
   FadeInDown,
   Layout,
 } from 'react-native-reanimated';
-import { Search, SlidersHorizontal, X } from 'lucide-react-native';
+import { Search, SlidersHorizontal, X, Navigation, MapPin } from 'lucide-react-native';
 
 import {
   LuxuryColors,
@@ -35,9 +36,15 @@ const CarsScreen = () => {
   const [cars, setCars] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [search, setSearch] = useState((params.search as string) || '');
+  const [search, setSearch] = useState((params.search as string) || (params.location as string) || '');
   const [selectedBrand, setSelectedBrand] = useState((params.brand as string) || 'All');
   const [selectedType, setSelectedType] = useState((params.type as string) || 'All');
+
+  // Location Search State
+  const [lat, setLat] = useState<number | null>(null);
+  const [lng, setLng] = useState<number | null>(null);
+  const [radius, setRadius] = useState<number>(50); // Default 50km
+  const [loadingLocation, setLoadingLocation] = useState(false);
 
   const loadCars = async (withRefresh = false) => {
     if (withRefresh) setRefreshing(true);
@@ -48,6 +55,11 @@ const CarsScreen = () => {
       if (selectedBrand !== 'All') params.brand = selectedBrand;
       if (selectedType !== 'All') params.type = selectedType;
       if (search) params.search = search;
+      if (lat && lng) {
+        params.lat = lat.toString();
+        params.lng = lng.toString();
+        params.radius = radius.toString();
+      }
       
       const { data } = await getCarsAPI(params);
       setCars(Array.isArray(data) ? data : data?.data || []);
@@ -61,7 +73,39 @@ const CarsScreen = () => {
 
   useEffect(() => {
     loadCars();
-  }, [selectedBrand, selectedType, search]);
+  }, [selectedBrand, selectedType, lat, lng, radius]);
+
+  useEffect(() => {
+    if (params.locate === 'true') {
+      handleGetLocation();
+    }
+  }, [params.locate]);
+
+  const handleGetLocation = async () => {
+    setLoadingLocation(true);
+    try {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== 'granted') {
+        alert('Permission to access location was denied');
+        setLoadingLocation(false);
+        return;
+      }
+
+      const location = await Location.getCurrentPositionAsync({});
+      setLat(location.coords.latitude);
+      setLng(location.coords.longitude);
+      setSearch(''); // clear text search when locating
+    } catch (error) {
+      alert('Error fetching location.');
+    } finally {
+      setLoadingLocation(false);
+    }
+  };
+
+  const handleClearLocation = () => {
+    setLat(null);
+    setLng(null);
+  };
 
   const FilterPill = ({ label, selected, onPress }: any) => (
     <PremiumPressable 
@@ -99,8 +143,8 @@ const CarsScreen = () => {
             </PremiumPressable>
           )}
           <View style={styles.divider} />
-          <PremiumPressable style={styles.filterBtn}>
-            <SlidersHorizontal size={18} color={LuxuryColors.accent} />
+          <PremiumPressable onPress={handleGetLocation} style={[styles.filterBtn, lat !== null ? { backgroundColor: LuxuryColors.accentSoft, borderRadius: 8, paddingHorizontal: 6 } : null]}>
+            <Navigation size={18} color={lat !== null ? LuxuryColors.accent : LuxuryColors.textMuted} />
           </PremiumPressable>
         </GlassCard>
       </View>
@@ -135,6 +179,36 @@ const CarsScreen = () => {
           )}
         />
       </View>
+
+      {/* Radius Filters */}
+      {lat && lng && (
+        <View style={styles.filtersWrapper}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, marginBottom: 8 }}>
+            <MapPin size={14} color={LuxuryColors.accent} />
+            <Text style={{ ...LuxuryTypography.caption, color: LuxuryColors.accent, marginLeft: 6, fontWeight: '700' }}>
+              Nearby Mode Active
+            </Text>
+            <View style={{ flex: 1 }} />
+            <PremiumPressable onPress={handleClearLocation}>
+              <Text style={{ fontSize: 12, color: LuxuryColors.textMuted }}>Clear</Text>
+            </PremiumPressable>
+          </View>
+          <FlatList
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            data={[10, 20, 50, 100]}
+            keyExtractor={(item) => item.toString()}
+            contentContainerStyle={styles.filterList}
+            renderItem={({ item }) => (
+              <FilterPill 
+                label={`< ${item} km`} 
+                selected={radius === item} 
+                onPress={() => setRadius(item)} 
+              />
+            )}
+          />
+        </View>
+      )}
 
       <FlatList
         data={cars}

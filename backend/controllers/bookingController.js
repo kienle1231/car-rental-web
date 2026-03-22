@@ -18,7 +18,11 @@ exports.createBooking = async (req, res) => {
       paymentStatus,
       paymentMethod,
       transactionId,
-      totalPrice
+      totalPrice,
+      customerName,
+      customerEmail,
+      customerPhone,
+      note
     } = req.body;
 
     const existingBookings = await Booking.find({ car, status: { $in: ['Approved', 'Pending'] } });
@@ -45,10 +49,28 @@ exports.createBooking = async (req, res) => {
       paymentStatus,
       paymentMethod,
       transactionId,
-      totalPrice
+      totalPrice,
+      customerName,
+      customerEmail,
+      customerPhone,
+      note
     });
     res.status(201).json(booking);
   } catch (error) { res.status(400).json({ error: error.message }); }
+};
+
+exports.getBookingById = async (req, res) => {
+  try {
+    const booking = await Booking.findById(req.params.id).populate('car');
+    if (!booking) return res.status(404).json({ message: 'Booking not found' });
+    
+    // Check ownership
+    if (booking.user.toString() !== req.user.id && req.user.role !== 'admin') {
+      return res.status(403).json({ message: 'Unauthorized access' });
+    }
+    
+    res.json(booking);
+  } catch (error) { res.status(500).json({ error: error.message }); }
 };
 
 exports.getMyBookings = async (req, res) => {
@@ -221,9 +243,7 @@ exports.completeBooking = async (req, res) => {
 exports.getStats = async (req, res) => {
   try {
     const totalBookings = await Booking.countDocuments();
-    const completedBookings = await Booking.find({ status: 'Completed' }).populate('car', 'name brand model imageUrl location');
     const allBookings = await Booking.find().populate('car', 'name brand model imageUrl location');
-    const revenue = completedBookings.reduce((acc, curr) => acc + curr.totalPrice, 0);
 
     const User = require('../models/User');
     const Car = require('../models/Car');
@@ -238,7 +258,10 @@ exports.getStats = async (req, res) => {
     const topCars = {};
     const bookingStatusStats = { Pending: 0, Approved: 0, Completed: 0, Cancelled: 0 };
 
-    completedBookings.forEach((booking) => {
+    const paidBookings = await Booking.find({ paymentStatus: 'paid' }).populate('car');
+    const revenue = paidBookings.reduce((acc, curr) => acc + curr.totalPrice, 0);
+
+    paidBookings.forEach((booking) => {
       const date = new Date(booking.createdAt);
       const monthKey = `${date.getFullYear()}-${date.getMonth() + 1}`;
       revenueByMonth[monthKey] = (revenueByMonth[monthKey] || 0) + booking.totalPrice;
@@ -248,17 +271,19 @@ exports.getStats = async (req, res) => {
       const location = booking.car?.location || 'Unknown';
       bookingsByLocation[location] = (bookingsByLocation[location] || 0) + 1;
 
-      const carKey = booking.car?._id ? `${booking.car._id}` : 'unknown';
-      if (!topCars[carKey]) {
-        topCars[carKey] = {
-          count: 0,
-          name: booking.car?.name || 'Unknown',
-          brand: booking.car?.brand || 'Unknown',
-          model: booking.car?.model || '',
-          imageUrl: booking.car?.imageUrl || ''
-        };
+      if (booking.car) {
+        const carKey = `${booking.car._id}`;
+        if (!topCars[carKey]) {
+          topCars[carKey] = {
+            count: 0,
+            name: booking.car.name,
+            brand: booking.car.brand,
+            model: booking.car.model,
+            imageUrl: booking.car.imageUrl
+          };
+        }
+        topCars[carKey].count += 1;
       }
-      topCars[carKey].count += 1;
 
       if (bookingStatusStats[booking.status] !== undefined) {
         bookingStatusStats[booking.status] += 1;

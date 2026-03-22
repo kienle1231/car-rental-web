@@ -39,6 +39,7 @@ export const getCarPricingAPI = (id: string, params: { startDate: string; endDat
 
 export const createBookingAPI = (data: any) => API.post('/bookings', data);
 export const getMyBookingsAPI = () => API.get('/bookings/my-bookings');
+export const confirmPaymentAPI = (data: { bookingId: string }) => API.post('/payments/confirm', data);
 export const getAvailabilityByCarAPI = (carId: string) => API.get(`/bookings/availability/${carId}`);
 export const extendBookingAPI = (id: string, newReturnDate: string) => API.post(`/bookings/${id}/extend`, { newReturnDate });
 export const cancelBookingAPI = (id: string) => API.patch(`/bookings/${id}/cancel`);

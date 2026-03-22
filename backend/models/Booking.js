@@ -20,6 +20,10 @@ const BookingSchema = new mongoose.Schema({
   paymentMethod: { type: String, default: 'card' },
   transactionId: { type: String },
   totalPrice: { type: Number, required: true },
+  customerName: { type: String, required: true },
+  customerEmail: { type: String, required: true },
+  customerPhone: { type: String, required: true },
+  note: { type: String }, // User's note or items
   lateFee: { type: Number, default: 0 },
   actualReturnDate: { type: Date },
   status: { type: String, enum: ['Pending', 'Approved', 'Completed', 'Cancelled', 'Overdue'], default: 'Pending' },

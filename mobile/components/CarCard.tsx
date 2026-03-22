@@ -33,7 +33,7 @@ const CarCard = ({ car, onPress, onBook }: CarCardProps) => {
 
         <View style={styles.priceBadge}>
           <Text style={styles.priceText}>
-            ${car.pricePerDay}
+            {car.pricePerDay.toLocaleString()} VNĐ
             <Text style={styles.perDayText}>/d</Text>
           </Text>
         </View>
@@ -44,6 +44,17 @@ const CarCard = ({ car, onPress, onBook }: CarCardProps) => {
           <View style={{ flex: 1 }}>
             <Text style={styles.brandText}>{car.brand}</Text>
             <Text style={styles.modelText}>{car.model}</Text>
+            {car.calculatedDistance ? (
+              <View style={styles.distanceBadge}>
+                <MapPin size={12} color={LuxuryColors.accent} />
+                <Text style={styles.distanceTextHighlight}>{(car.calculatedDistance / 1000).toFixed(1)} km from you</Text>
+              </View>
+            ) : (
+              <View style={styles.distanceBadge}>
+                <MapPin size={12} color={LuxuryColors.textMuted} />
+                <Text style={styles.distanceText}>{car.location || 'Global Hub'}</Text>
+              </View>
+            )}
           </View>
           <View style={styles.typeBadge}>
             <Text style={styles.typeText}>{car.type || 'LUXURY'}</Text>
@@ -85,16 +96,8 @@ const styles = StyleSheet.create({
     borderColor: LuxuryColors.border,
     overflow: 'hidden',
     marginBottom: 20,
-    ...Platform.select({
-      web: { boxShadow: `0px 4px 20px rgba(0, 0, 0, 0.5)` },
-      default: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.1,
-        shadowRadius: 10,
-        elevation: 4,
-      }
-    }),
+    boxShadow: '0px 4px 20px rgba(0, 0, 0, 0.5)',
+    elevation: 4,
   },
   imageContainer: {
     height: 180,
@@ -166,6 +169,22 @@ const styles = StyleSheet.create({
     ...LuxuryTypography.titleM,
     color: '#FFF',
     fontSize: 20,
+    marginBottom: 4,
+  },
+  distanceBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginTop: 2,
+  },
+  distanceText: {
+    color: LuxuryColors.textSecondary,
+    fontSize: 12,
+  },
+  distanceTextHighlight: {
+    color: LuxuryColors.accent,
+    fontSize: 12,
+    fontWeight: 'bold',
   },
   typeBadge: {
     backgroundColor: 'rgba(255,255,255,0.05)',

@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
-import { Video, ResizeMode } from 'expo-av';
+import { useVideoPlayer, VideoView } from 'expo-video';
 import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
 import { ChevronLeft, Mail, Lock, ShieldCheck } from 'lucide-react-native';
 
@@ -35,6 +35,12 @@ const LoginScreen = () => {
   const [form, setForm] = useState({ email: '', password: '' });
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
+  
+  const player = useVideoPlayer('https://assets.mixkit.co/videos/52427/52427-720.mp4', (player) => {
+    player.loop = true;
+    player.muted = true;
+    player.play();
+  });
 
   const handleSubmit = async () => {
     if (!form.email.trim() || !form.password.trim()) {
@@ -69,13 +75,11 @@ const LoginScreen = () => {
       
       {/* VIDEO HERO BACKGROUND */}
       <View style={styles.heroContainer}>
-        <Video
-          source={{ uri: 'https://assets.mixkit.co/videos/52427/52427-720.mp4' }}
+        <VideoView
+          player={player}
           style={StyleSheet.absoluteFill}
-          shouldPlay
-          isLooping
-          isMuted
-          resizeMode={ResizeMode.COVER}
+          contentFit="cover"
+          nativeControls={false}
         />
         <LinearGradient
           colors={['rgba(2, 6, 23, 0.4)', 'rgba(2, 6, 23, 0.8)', LuxuryColors.background]}

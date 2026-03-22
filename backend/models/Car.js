@@ -13,6 +13,10 @@ const CarSchema = new mongoose.Schema({
     lat: { type: Number },
     lng: { type: Number }
   },
+  locationGeo: {
+    type: { type: String, enum: ['Point'], default: 'Point' },
+    coordinates: { type: [Number], default: [0, 0] } // [lng, lat]
+  },
   imageUrl: { type: String, required: true },
   galleryImages: { type: [String], default: [] },
   car3dModel: { type: String },
@@ -22,5 +26,7 @@ const CarSchema = new mongoose.Schema({
   transmission: { type: String, required: true }, // Auto, Manual
   fuelType: { type: String, required: true }, // Electric, Gas, Hybrid
 }, { timestamps: true });
+
+CarSchema.index({ locationGeo: '2dsphere' });
 
 module.exports = mongoose.model('Car', CarSchema);

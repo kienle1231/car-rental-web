@@ -19,6 +19,7 @@ export const googleLoginAPI = (data) => API.post('/auth/google', data);
 export const getUsersAPI = () => API.get('/auth/users');
 export const deleteUserAPI = (id) => API.delete(`/auth/users/${id}`);
 export const toggleUserStatusAPI = (id) => API.put(`/auth/users/${id}/status`);
+export const confirmPaymentAPI = (data) => API.post('/payments/confirm', data);
 
 // Cars
 export const getCarsAPI = (params) => API.get('/cars', { params });
@@ -31,6 +32,7 @@ export const deleteCarAPI = (id) => API.delete(`/cars/${id}`);
 // Bookings
 export const createBookingAPI = (data) => API.post('/bookings', data);
 export const getMyBookingsAPI = () => API.get('/bookings/my-bookings');
+export const getBookingByIdAPI = (id) => API.get(`/bookings/${id}`);
 export const getAllBookingsAPI = () => API.get('/bookings/admin');
 export const updateBookingStatusAPI = (id, status) => API.put(`/bookings/admin/${id}`, { status });
 export const deleteBookingAPI = (id) => API.delete(`/bookings/admin/${id}`);

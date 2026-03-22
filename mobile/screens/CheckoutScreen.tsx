@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   StyleSheet,
   Text,
@@ -8,6 +8,7 @@ import {
   Dimensions,
   Platform,
   ActivityIndicator,
+  Image,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { 
@@ -18,17 +19,19 @@ import {
   MapPin, 
   Check,
   Lock,
-  Apple
+  Apple,
+  QrCode,
+  Timer
 } from 'lucide-react-native';
 import { BlurView } from 'expo-blur';
-import Animated, { FadeInDown, FadeInRight } from 'react-native-reanimated';
+import Animated, { FadeInDown, FadeInRight, FadeIn } from 'react-native-reanimated';
 
 import { LuxuryColors, LuxurySpacing, LuxuryTypography, LuxuryRadius } from '@/constants/luxuryTheme';
 import { PremiumPressable } from '@/components/PremiumPressable';
 import GlassCard from '@/components/GlassCard';
 import LuxuryModal from '@/components/LuxuryModal';
 import BiometricModal from '@/components/BiometricModal';
-import { createBookingAPI } from '@/services/api';
+import { createBookingAPI, confirmPaymentAPI } from '@/services/api';
 
 const { width } = Dimensions.get('window');
 
@@ -41,14 +44,51 @@ const CheckoutScreen = () => {
   const parsedBooking = bookingData ? JSON.parse(bookingData as string) : null;
   
   const [loading, setLoading] = useState(false);
-  const [paymentMethod, setPaymentMethod] = useState('card');
+  const [paymentMethod, setPaymentMethod] = useState('vietqr');
   const [cardNumber, setCardNumber] = useState('');
   const [expiry, setExpiry] = useState('');
   const [cvv, setCvv] = useState('');
+
+  // Guest Information State
+  const [customerForm, setCustomerForm] = useState({
+    name: '',
+    email: '',
+    phone: '',
+    note: ''
+  });
+  
+  // QR Payment Flow State
+  const [qrStep, setQrStep] = useState(false);
+  const [pendingBookingId, setPendingBookingId] = useState('');
+  const [qrTimer, setQrTimer] = useState(30);
   const [biometricVisible, setBiometricVisible] = useState(false);
   const [modalConfig, setModalConfig] = useState<any>({ visible: false, type: 'success', title: '', message: '' });
 
+  // Handle auto payment confirmation timer
+  useEffect(() => {
+    let interval: any;
+    if (qrStep && qrTimer > 0) {
+      interval = setInterval(() => {
+        setQrTimer((prev) => prev - 1);
+      }, 1000);
+    } else if (qrStep && qrTimer === 0) {
+      handleConfirmPayment();
+    }
+    return () => clearInterval(interval);
+  }, [qrStep, qrTimer]);
+
   const handlePay = async () => {
+    if (!customerForm.name || !customerForm.email || !customerForm.phone) {
+      setModalConfig({
+        visible: true,
+        type: 'warning',
+        title: 'Missing Info',
+        message: 'Please fill in all required Guest Information fields.',
+        onConfirm: () => setModalConfig({ ...modalConfig, visible: false })
+      });
+      return;
+    }
+
     if (paymentMethod === 'card' && (!cardNumber || !expiry || !cvv)) {
       setModalConfig({
         visible: true,
@@ -59,7 +99,6 @@ const CheckoutScreen = () => {
       });
       return;
     }
-
     setBiometricVisible(true);
   };
 
@@ -74,23 +113,33 @@ const CheckoutScreen = () => {
         pickupLocation: parsedCar?.location || 'Main Hub',
         addOns: parsedBooking.addOns || [],
         totalPrice: parseFloat(totalPrice as string),
-        paymentStatus: 'paid', // Mark as paid for demo
+        paymentStatus: paymentMethod === 'vietqr' ? 'pending' : 'paid',
         paymentMethod: paymentMethod,
+        customerName: customerForm.name,
+        customerEmail: customerForm.email,
+        customerPhone: customerForm.phone,
+        note: customerForm.note
       };
 
-      await createBookingAPI(finalBookingData);
+      const res = await createBookingAPI(finalBookingData);
 
-      setModalConfig({
-        visible: true,
-        type: 'success',
-        title: 'Payment Secured',
-        message: 'Your luxury journey has been officially reserved. Confirmation sent to your email.',
-        confirmText: 'View My ITINERARY',
-        onConfirm: () => {
-          setModalConfig({ ...modalConfig, visible: false });
-          router.push('/(tabs)/bookings');
-        }
-      });
+      if (paymentMethod === 'vietqr') {
+        setPendingBookingId(res.data._id);
+        setQrStep(true);
+        setQrTimer(30);
+      } else {
+        setModalConfig({
+          visible: true,
+          type: 'success',
+          title: 'Payment Secured',
+          message: 'Your luxury journey has been officially reserved. Confirmation sent to your email.',
+          confirmText: 'View My ITINERARY',
+          onConfirm: () => {
+            setModalConfig({ ...modalConfig, visible: false });
+            router.push('/(tabs)/bookings');
+          }
+        });
+      }
     } catch (error: any) {
       console.error('Payment error:', error);
       setModalConfig({
@@ -105,25 +154,123 @@ const CheckoutScreen = () => {
     }
   };
 
-  const PaymentOption = ({ id, icon: Icon, label }: any) => (
+  const handleConfirmPayment = async () => {
+    try {
+      setLoading(true);
+      await confirmPaymentAPI({ bookingId: pendingBookingId });
+      setModalConfig({
+        visible: true,
+        type: 'success',
+        title: 'Payment Confirmed',
+        message: 'Your transfer was successful. Your luxury journey is officially reserved.',
+        confirmText: 'View My ITINERARY',
+        onConfirm: () => {
+          setModalConfig({ ...modalConfig, visible: false });
+          router.replace('/(tabs)/bookings');
+        }
+      });
+    } catch (error: any) {
+      setModalConfig({
+        visible: true,
+        type: 'error',
+        title: 'Confirmation Failed',
+        message: error.response?.data?.error || 'Could not verify payment yet.',
+        onConfirm: () => setModalConfig({ ...modalConfig, visible: false })
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const PaymentOption = ({ _id, icon: Icon, label }: any) => (
     <PremiumPressable
-      onPress={() => setPaymentMethod(id)}
+      onPress={() => setPaymentMethod(_id)}
       style={[
         styles.methodCard,
-        paymentMethod === id && styles.methodCardActive
+        paymentMethod === _id && styles.methodCardActive
       ]}
     >
       <View style={styles.methodHeader}>
-        <View style={[styles.methodIcon, paymentMethod === id && { backgroundColor: LuxuryColors.accent }]}>
-          <Icon size={20} color={paymentMethod === id ? LuxuryColors.background : LuxuryColors.accent} />
+        <View style={[styles.methodIcon, paymentMethod === _id && { backgroundColor: LuxuryColors.accent }]}>
+          <Icon size={20} color={paymentMethod === _id ? LuxuryColors.background : LuxuryColors.accent} />
         </View>
-        <Text style={[styles.methodLabel, paymentMethod === id && { color: '#FFF' }]}>{label}</Text>
+        <Text style={[styles.methodLabel, paymentMethod === _id && { color: '#FFF' }]}>{label}</Text>
       </View>
-      <View style={[styles.radio, paymentMethod === id && styles.radioActive]}>
-        {paymentMethod === id && <View style={styles.radioInner} />}
+      <View style={[styles.radio, paymentMethod === _id && styles.radioActive]}>
+        {paymentMethod === _id && <View style={styles.radioInner} />}
       </View>
     </PremiumPressable>
   );
+
+  if (qrStep) {
+    // Generate VietQR formatting
+    // Let's pass the raw totalPrice or formatted
+    const qrUrl = `https://img.vietqr.io/image/MB-0981313248-compact.png?amount=${totalPrice}&addInfo=BOOKING_${pendingBookingId}&accountName=LE%20TRUNG%20KIEN`;
+
+    return (
+      <View style={styles.container}>
+        <View style={styles.header}>
+          <Text style={[styles.headerTitle, { marginLeft: 20 }]}>Complete Transfer</Text>
+        </View>
+
+        <ScrollView contentContainerStyle={[styles.scrollContent, { alignItems: 'center' }]}>
+          <Animated.View entering={FadeInDown} style={{ width: '100%' }}>
+            <GlassCard style={styles.qrCard}>
+              <Text style={styles.qrAmount}>{Number(totalPrice).toLocaleString()} VNĐ</Text>
+              <Text style={styles.qrDesc}>Scan with your banking app</Text>
+
+              <View style={styles.qrBox}>
+                <Image source={{ uri: qrUrl }} style={styles.qrImage} resizeMode="contain" />
+              </View>
+
+              <View style={styles.qrDetails}>
+                <View style={styles.qrDetailRow}>
+                  <Text style={styles.qrLabel}>Bank:</Text>
+                  <Text style={styles.qrValue}>MB Bank</Text>
+                </View>
+                <View style={styles.qrDetailRow}>
+                  <Text style={styles.qrLabel}>Account No:</Text>
+                  <Text style={styles.qrValue}>0981313248</Text>
+                </View>
+                <View style={styles.qrDetailRow}>
+                  <Text style={styles.qrLabel}>Account Name:</Text>
+                  <Text style={styles.qrValueHighlight}>LE TRUNG KIEN</Text>
+                </View>
+                <View style={styles.qrDetailRow}>
+                  <Text style={styles.qrLabel}>Content:</Text>
+                  <Text style={styles.qrValueHighlight}>BOOKING_{pendingBookingId}</Text>
+                </View>
+              </View>
+            </GlassCard>
+
+            <View style={styles.timerContainer}>
+              <ActivityIndicator color={LuxuryColors.accent} size="small" />
+              <Text style={styles.waitingText}>Waiting for payment confirmation...</Text>
+            </View>
+            
+            <View style={styles.timerRow}>
+              <Timer size={16} color={LuxuryColors.textMuted} />
+              <Text style={styles.timerText}>Auto confirm in {qrTimer}s</Text>
+            </View>
+
+            <PremiumPressable onPress={handleConfirmPayment} style={styles.transferDoneBtn} disabled={loading}>
+              {loading ? <ActivityIndicator color={LuxuryColors.background} /> : <Check size={20} color={LuxuryColors.background} />}
+              <Text style={styles.payBtnText}>I HAVE TRANSFERRED</Text>
+            </PremiumPressable>
+
+          </Animated.View>
+        </ScrollView>
+        <LuxuryModal
+          visible={modalConfig.visible}
+          type={modalConfig.type}
+          title={modalConfig.title}
+          message={modalConfig.message}
+          confirmText={modalConfig.confirmText}
+          onConfirm={modalConfig.onConfirm}
+        />
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
@@ -141,7 +288,7 @@ const CheckoutScreen = () => {
           <GlassCard style={styles.summaryCard}>
             <View style={styles.carRow}>
               <Text style={styles.carName}>{parsedCar?.brand} {parsedCar?.model}</Text>
-              <Text style={styles.priceTag}>${totalPrice}</Text>
+              <Text style={styles.priceTag}>{Number(totalPrice).toLocaleString()} VNĐ</Text>
             </View>
             <View style={styles.divider} />
             <View style={styles.detailRow}>
@@ -155,11 +302,62 @@ const CheckoutScreen = () => {
           </GlassCard>
         </Animated.View>
 
+        <Animated.View entering={FadeInDown.delay(150)} style={styles.section}>
+          <Text style={styles.sectionTitle}>GUEST INFORMATION</Text>
+          <GlassCard style={styles.paymentCard}>
+            <View style={styles.inputGroup}>
+              <Text style={styles.inputLabel}>FULL NAME *</Text>
+              <TextInput
+                placeholder="Le Trung Kien"
+                placeholderTextColor="rgba(255,255,255,0.2)"
+                style={styles.input}
+                value={customerForm.name}
+                onChangeText={(t) => setCustomerForm({...customerForm, name: t})}
+              />
+            </View>
+            <View style={styles.inputGroup}>
+              <Text style={styles.inputLabel}>EMAIL ADDRESS (FOR E-TICKET) *</Text>
+              <TextInput
+                placeholder="de180359letrungkien@gmail.com"
+                placeholderTextColor="rgba(255,255,255,0.2)"
+                style={styles.input}
+                value={customerForm.email}
+                onChangeText={(t) => setCustomerForm({...customerForm, email: t})}
+                keyboardType="email-address"
+                autoCapitalize="none"
+              />
+            </View>
+            <View style={styles.inputGroup}>
+              <Text style={styles.inputLabel}>PHONE NUMBER *</Text>
+              <TextInput
+                placeholder="0981313248"
+                placeholderTextColor="rgba(255,255,255,0.2)"
+                style={styles.input}
+                value={customerForm.phone}
+                onChangeText={(t) => setCustomerForm({...customerForm, phone: t})}
+                keyboardType="phone-pad"
+              />
+            </View>
+            <View style={styles.inputGroup}>
+              <Text style={styles.inputLabel}>SPECIAL REQUESTS / NOTES</Text>
+              <TextInput
+                placeholder="Need 2 baby car seats..."
+                placeholderTextColor="rgba(255,255,255,0.2)"
+                style={[styles.input, { height: 80, textAlignVertical: 'top', paddingTop: 12 }]}
+                value={customerForm.note}
+                onChangeText={(t) => setCustomerForm({...customerForm, note: t})}
+                multiline
+              />
+            </View>
+          </GlassCard>
+        </Animated.View>
+
         <Animated.View entering={FadeInDown.delay(200)} style={styles.section}>
           <Text style={styles.sectionTitle}>PAYMENT METHOD</Text>
           <View style={styles.methodsGrid}>
-            <PaymentOption id="card" icon={CreditCard} label="Credit Card" />
-            <PaymentOption id="apple" icon={Apple} label="Apple Pay" />
+            <PaymentOption _id="vietqr" icon={QrCode} label="VietQR" />
+            <PaymentOption _id="card" icon={CreditCard} label="Credit Card" />
+            <PaymentOption _id="apple" icon={Apple} label="Apple Pay" />
           </View>
         </Animated.View>
 
@@ -216,7 +414,7 @@ const CheckoutScreen = () => {
       <BlurView intensity={30} tint="dark" style={styles.footer}>
         <View style={styles.totalRow}>
           <Text style={styles.totalLabel}>Total Payable</Text>
-          <Text style={styles.totalValue}>${totalPrice}</Text>
+          <Text style={styles.totalValue}>{Number(totalPrice).toLocaleString()} VNĐ</Text>
         </View>
         <PremiumPressable 
           onPress={handlePay} 
@@ -461,6 +659,96 @@ const styles = StyleSheet.create({
     color: LuxuryColors.background,
     fontSize: 16,
     letterSpacing: 1.5,
+  },
+  qrCard: {
+    padding: 25,
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  qrAmount: {
+    ...LuxuryTypography.titleL,
+    fontSize: 32,
+    color: LuxuryColors.accent,
+    marginBottom: 5,
+  },
+  qrDesc: {
+    ...LuxuryTypography.body,
+    color: LuxuryColors.textSecondary,
+    marginBottom: 20,
+  },
+  qrBox: {
+    width: 240,
+    height: 240,
+    backgroundColor: '#FFF',
+    borderRadius: LuxuryRadius.lg,
+    padding: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 25,
+  },
+  qrImage: {
+    width: 220,
+    height: 220,
+  },
+  qrDetails: {
+    width: '100%',
+    backgroundColor: 'rgba(255,255,255,0.03)',
+    borderRadius: LuxuryRadius.md,
+    padding: 15,
+    gap: 12,
+  },
+  qrDetailRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  qrLabel: {
+    ...LuxuryTypography.body,
+    color: LuxuryColors.textMuted,
+    fontSize: 13,
+  },
+  qrValue: {
+    ...LuxuryTypography.bodySemibold,
+    color: '#FFF',
+    fontSize: 14,
+  },
+  qrValueHighlight: {
+    ...LuxuryTypography.bodySemibold,
+    color: LuxuryColors.accent,
+    fontSize: 14,
+  },
+  timerContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+    marginTop: 10,
+    marginBottom: 10,
+  },
+  waitingText: {
+    ...LuxuryTypography.bodySemibold,
+    color: LuxuryColors.accent,
+  },
+  timerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    marginBottom: 30,
+  },
+  timerText: {
+    ...LuxuryTypography.caption,
+    color: LuxuryColors.textMuted,
+  },
+  transferDoneBtn: {
+    height: 56,
+    backgroundColor: LuxuryColors.accent,
+    borderRadius: LuxuryRadius.full,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 12,
+    width: '100%',
   },
 });
 

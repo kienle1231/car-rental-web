@@ -18,32 +18,16 @@ export const luxuryStyles = StyleSheet.create({
     borderRadius: LuxuryRadius.lg,
     borderWidth: 1,
     borderColor: LuxuryColors.border,
-    ...Platform.select({
-      web: { boxShadow: `0px 10px 18px ${LuxuryColors.shadow}` },
-      default: {
-        shadowColor: LuxuryColors.shadow,
-        shadowOpacity: 0.4,
-        shadowRadius: 18,
-        shadowOffset: { width: 0, height: 10 },
-        elevation: 12,
-      }
-    }),
+    boxShadow: `0px 10px 18px ${LuxuryColors.shadow}`,
+    elevation: 12,
   },
   glassCardStrong: {
     backgroundColor: LuxuryColors.cardStrong,
     borderRadius: LuxuryRadius.lg,
     borderWidth: 1,
     borderColor: LuxuryColors.borderStrong,
-    ...Platform.select({
-      web: { boxShadow: `0px 14px 24px ${LuxuryColors.shadow}` },
-      default: {
-        shadowColor: LuxuryColors.shadow,
-        shadowOpacity: 0.5,
-        shadowRadius: 24,
-        shadowOffset: { width: 0, height: 14 },
-        elevation: 14,
-      }
-    }),
+    boxShadow: `0px 14px 24px ${LuxuryColors.shadow}`,
+    elevation: 14,
   },
   pill: {
     borderRadius: 999,

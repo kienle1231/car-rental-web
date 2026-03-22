@@ -1,6 +1,7 @@
 import { useMemo, useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Users, Car, Calendar, DollarSign, Trash2, Lock, Unlock, Check, X, BarChart3, UserCog, CarFront, BookOpen, TrendingUp } from 'lucide-react';
+import { Users, Car, Calendar, DollarSign, Trash2, Lock, Unlock, Check, X, BarChart3, UserCog, CarFront, BookOpen, TrendingUp, Eye } from 'lucide-react';
 import { Line, Bar, Doughnut } from 'react-chartjs-2';
 import {
   Chart as ChartJS,
@@ -27,6 +28,7 @@ const tabs = [
 ];
 
 const AdminDashboard = () => {
+  const navigate = useNavigate();
   const [tab, setTab] = useState('dashboard');
   const [stats, setStats] = useState({});
   const [users, setUsers] = useState([]);
@@ -78,7 +80,7 @@ const AdminDashboard = () => {
     { icon: <Users className="w-6 h-6" />, label: 'Total Users', value: stats.totalUsers || 0, color: 'from-blue-500 to-blue-600' },
     { icon: <Car className="w-6 h-6" />, label: 'Total Cars', value: stats.totalCars || 0, color: 'from-emerald-500 to-emerald-600' },
     { icon: <Calendar className="w-6 h-6" />, label: 'Total Bookings', value: stats.totalBookings || 0, color: 'from-purple-500 to-purple-600' },
-    { icon: <DollarSign className="w-6 h-6" />, label: 'Revenue', value: `$${stats.revenue || 0}`, color: 'from-yellow-400 to-amber-500' },
+    { icon: <DollarSign className="w-6 h-6" />, label: 'Revenue', value: `${(stats.revenue || 0).toLocaleString()} VNĐ`, color: 'from-yellow-400 to-amber-500' },
   ];
 
   const monthLabels = useMemo(() => {
@@ -282,8 +284,8 @@ const AdminDashboard = () => {
                             <img src={car.image} alt={`${car.brand} ${car.model}`} className="w-12 h-12 rounded-xl object-cover" />
                             <div>
                               <p className="text-sm font-semibold">{car.brand} {car.model}</p>
-                              <p className="text-xs text-gray-500">Base ${car.basePrice} → ${car.dynamicPrice}</p>
-                            </div>
+                            <p className="text-xs text-gray-500">Base {car.basePrice.toLocaleString()} VNĐ → {car.dynamicPrice.toLocaleString()} VNĐ</p>
+                          </div>
                           </div>
                           <div className="text-right">
                             <p className={`text-sm font-semibold ${surgeColor}`}>{car.surgePercentage}%</p>
@@ -309,24 +311,36 @@ const AdminDashboard = () => {
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="text-left text-gray-400 border-b border-white/10">
-                        <th className="py-3">Customer</th>
-                        <th className="py-3">Car</th>
                         <th className="py-3">Dates</th>
                         <th className="py-3">Status</th>
+                        <th className="py-3">Action</th>
                       </tr>
                     </thead>
                     <tbody>
                       {bookings.slice(0, 5).map((booking) => (
                         <tr key={booking._id} className="border-b border-white/5">
-                          <td className="py-3">{booking.user?.name || 'Unknown'}</td>
+                          <td className="py-3">
+                            <div>
+                               <p className="font-medium">{booking.customerName || booking.user?.name || 'Unknown'}</p>
+                               <p className="text-[10px] text-gray-600">{booking.customerEmail || booking.user?.email}</p>
+                            </div>
+                          </td>
                           <td className="py-3 text-gray-400">{booking.car?.name || 'Unknown'}</td>
-                          <td className="py-3 text-gray-400">
-                            {new Date(booking.pickupDate).toLocaleDateString()} → {new Date(booking.returnDate).toLocaleDateString()}
+                          <td className="py-3 text-gray-400 text-xs">
+                            {new Date(booking.pickupDate).toLocaleDateString()} - {new Date(booking.returnDate).toLocaleDateString()}
                           </td>
                           <td className="py-3">
-                            <span className={`px-3 py-1 rounded-full text-xs font-medium ${booking.status === 'Pending' ? 'bg-yellow-400/10 text-yellow-400' : booking.status === 'Approved' ? 'bg-green-400/10 text-green-400' : 'bg-red-400/10 text-red-400'}`}>
+                            <span className={`px-3 py-1 rounded-full text-[10px] font-medium ${booking.status === 'Pending' ? 'bg-yellow-400/10 text-yellow-400' : booking.status === 'Approved' ? 'bg-green-400/10 text-green-400' : 'bg-red-400/10 text-red-400'}`}>
                               {booking.status}
                             </span>
+                          </td>
+                          <td className="py-3 text-right pr-4">
+                             <button 
+                               onClick={() => navigate(`/bookings/${booking._id}`)}
+                               className="p-1 px-2 bg-white/10 hover:bg-yellow-400 hover:text-black rounded text-[10px] uppercase font-bold transition flex items-center gap-1"
+                             >
+                                <Eye className="w-3 h-3" /> Detail
+                             </button>
                           </td>
                         </tr>
                       ))}
@@ -405,14 +419,21 @@ const AdminDashboard = () => {
               <div className="space-y-4">
                 {bookings.map(b => (
                   <div key={b._id} className="bg-white/5 border border-white/10 rounded-2xl p-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-                    <div>
+                    <div className="flex-1">
                       <h3 className="font-bold flex items-center gap-2"><Car className="w-5 h-5 text-yellow-400" /> {b.car?.name || 'Unknown'}</h3>
-                      <p className="text-sm text-gray-500 mt-1">Customer: {b.user?.name || 'Unknown'} ({b.user?.email})</p>
+                      <p className="text-sm text-gray-500 mt-1">Customer: {b.customerName || b.user?.name} ({b.customerEmail || b.user?.email})</p>
+                      <p className="text-xs text-gray-600">ID: {b._id}</p>
                       <p className="text-sm text-gray-500">Pickup: {new Date(b.pickupDate).toLocaleDateString()} → Return: {new Date(b.returnDate).toLocaleDateString()}</p>
-                      <p className="text-yellow-400 font-bold mt-1">${b.totalPrice}</p>
+                      <p className="text-yellow-400 font-bold mt-1">{b.totalPrice.toLocaleString()} VNĐ</p>
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-3">
                       <span className={`px-3 py-1 rounded-full text-xs font-medium ${b.status === 'Pending' ? 'bg-yellow-400/10 text-yellow-400' : b.status === 'Approved' ? 'bg-green-400/10 text-green-400' : 'bg-red-400/10 text-red-400'}`}>{b.status}</span>
+                      <button 
+                         onClick={() => navigate(`/bookings/${b._id}`)}
+                         className="p-2 px-4 bg-white/10 hover:bg-white/20 rounded-xl text-xs font-bold transition flex items-center gap-1"
+                      >
+                         <Eye className="w-4 h-4" /> View Details
+                      </button>
                       {b.status === 'Pending' && (
                         <>
                           <button onClick={() => handleBookingStatus(b._id, 'Approved')} className="p-2 rounded-lg bg-green-500/10 hover:bg-green-500/20"><Check className="w-4 h-4 text-green-400" /></button>

@@ -150,10 +150,7 @@ const styles = StyleSheet.create({
     width: '120%',
     height: 2,
     backgroundColor: LuxuryColors.accent,
-    shadowColor: LuxuryColors.accent,
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.8,
-    shadowRadius: 10,
+    boxShadow: `0px 0px 10px ${LuxuryColors.accent}`,
   },
   title: {
     ...LuxuryTypography.caption,

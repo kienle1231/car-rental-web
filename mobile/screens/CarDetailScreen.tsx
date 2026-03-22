@@ -62,7 +62,7 @@ import {
 import { CarDetailSkeleton } from '@/components/Skeleton';
 
 const { width, height } = Dimensions.get('window');
-const IMAGE_HEIGHT = height * 0.35;
+const IMAGE_HEIGHT = height * 0.3;
 
 const addOnOptions = [
   { id: 'basic_insurance', label: 'Basic Insurance', price: 12 },
@@ -502,13 +502,12 @@ const CarDetailScreen = () => {
             }}
           >
             {images.map((img: string, index: number) => (
-              <Image key={index} source={{ uri: img }} style={styles.mainImage} resizeMode="cover" />
+              <Image key={index} source={{ uri: img }} style={styles.mainImage} resizeMode="contain" />
             ))}
           </Animated.ScrollView>
           <LinearGradient
             colors={['transparent', 'rgba(2, 6, 23, 0.2)', LuxuryColors.background]}
-            style={[StyleSheet.absoluteFill, Platform.OS === 'web' && { pointerEvents: 'none' } as any]}
-            pointerEvents={Platform.OS === 'web' ? undefined : 'none'}
+            style={[StyleSheet.absoluteFill, { pointerEvents: 'none' } as any]}
           />
           
           <View style={styles.pagination}>
@@ -893,6 +892,7 @@ const styles = StyleSheet.create({
   mainImage: {
     width: width,
     height: IMAGE_HEIGHT,
+    backgroundColor: '#020617', // Match the background theme
   },
   pagination: {
     position: 'absolute',

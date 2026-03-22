@@ -344,7 +344,7 @@ const CarDetail = () => {
               </div>
 
               <div className="text-3xl font-black">
-                <span className="bg-gradient-to-r from-yellow-400 to-amber-500 bg-clip-text text-transparent">${car.pricePerDay}</span>
+                <span className="bg-gradient-to-r from-yellow-400 to-amber-500 bg-clip-text text-transparent">{car.pricePerDay.toLocaleString()} VNĐ</span>
                 <span className="text-sm text-gray-500 font-normal"> /day</span>
               </div>
 

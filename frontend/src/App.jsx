@@ -15,6 +15,7 @@ import MyBookings from './pages/MyBookings';
 import AdminDashboard from './pages/AdminDashboard';
 import Checkout from './pages/Checkout';
 import BookingConfirmation from './pages/BookingConfirmation';
+import BookingDetail from './pages/BookingDetail';
 import FloatingAIButton from './components/FloatingAIButton';
 
 const PageTransition = ({ children }) => (
@@ -42,6 +43,7 @@ const AnimatedRoutes = () => {
         <Route path="/checkout" element={<PageTransition><Checkout /></PageTransition>} />
         <Route path="/booking-confirmation" element={<PageTransition><BookingConfirmation /></PageTransition>} />
         <Route path="/my-bookings" element={<PageTransition><MyBookings /></PageTransition>} />
+        <Route path="/bookings/:id" element={<PageTransition><BookingDetail /></PageTransition>} />
         <Route path="/admin" element={<PageTransition><AdminDashboard /></PageTransition>} />
       </Routes>
     </AnimatePresence>

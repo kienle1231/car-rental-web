@@ -73,9 +73,7 @@ const styles = StyleSheet.create({
     height: 65,
     borderRadius: 33,
     zIndex: 999,
-    shadowColor: LuxuryColors.accent,
-    shadowOffset: { width: 0, height: 4 },
-    shadowRadius: 10,
+    boxShadow: `0px 4px 10px ${LuxuryColors.accent}`,
     elevation: 8,
   },
   button: {

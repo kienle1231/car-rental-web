@@ -1,24 +1,30 @@
 import { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Search, SlidersHorizontal } from 'lucide-react';
+import { Search, SlidersHorizontal, MapPin, Navigation } from 'lucide-react';
 import { getCarsAPI } from '../services/api';
 import CarCard from '../components/CarCard';
 import LoadingSkeleton from '../components/LoadingSkeleton';
 
 const Cars = () => {
+  const [searchParams] = useSearchParams();
   const [cars, setCars] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState('');
-  const [brand, setBrand] = useState('');
-  const [type, setType] = useState('');
+  const [search, setSearch] = useState(searchParams.get('search') || searchParams.get('location') || '');
+  const [brand, setBrand] = useState(searchParams.get('brand') || '');
+  const [type, setType] = useState(searchParams.get('type') || '');
   const [showFilters, setShowFilters] = useState(false);
+  const [lat, setLat] = useState(null);
+  const [lng, setLng] = useState(null);
+  const [radius, setRadius] = useState(50); // Default 50km
+  const [locationLoading, setLocationLoading] = useState(false);
 
   const brands = ['Tesla', 'BMW', 'Mercedes', 'Audi', 'Lamborghini', 'Porsche', 'Toyota', 'Honda', 'Ford', 'Land Rover', 'Nissan'];
   const types = ['Sedan', 'SUV', 'Coupe', 'Sports', 'Supercar', 'Electric'];
 
   useEffect(() => {
     fetchCars();
-  }, [brand, type]);
+  }, [brand, type, lat, lng, radius]);
 
   const fetchCars = async () => {
     setLoading(true);
@@ -27,6 +33,11 @@ const Cars = () => {
       if (brand) params.brand = brand;
       if (type) params.type = type;
       if (search) params.search = search;
+      if (lat && lng) {
+        params.lat = lat;
+        params.lng = lng;
+        params.radius = radius;
+      }
       const { data } = await getCarsAPI(params);
       setCars(Array.isArray(data) ? data : (data?.data || []));
     } catch (err) { console.error(err); }
@@ -36,6 +47,26 @@ const Cars = () => {
   const handleSearch = (e) => {
     e.preventDefault();
     fetchCars();
+  };
+
+  const handleGetLocation = () => {
+    setLocationLoading(true);
+    if ('geolocation' in navigator) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          setLat(position.coords.latitude);
+          setLng(position.coords.longitude);
+          setLocationLoading(false);
+        },
+        (error) => {
+          alert('Error getting location. Ensure location services are on: ' + error.message);
+          setLocationLoading(false);
+        }
+      );
+    } else {
+      alert('Geolocation is not supported by your browser');
+      setLocationLoading(false);
+    }
   };
 
   return (
@@ -57,6 +88,12 @@ const Cars = () => {
               <input type="text" placeholder="Search cars..." value={search} onChange={(e) => setSearch(e.target.value)}
                 className="w-full bg-white/5 border border-white/10 rounded-xl pl-12 pr-4 py-3 text-white placeholder:text-gray-600 focus:outline-none focus:ring-2 focus:ring-yellow-400/50" />
             </div>
+            
+            <button type="button" onClick={handleGetLocation} className={`px-4 py-3 rounded-xl border transition flex items-center justify-center gap-2 ${lat ? 'bg-yellow-400/10 border-yellow-400 text-yellow-400' : 'bg-white/10 border-white/10 text-white hover:bg-white/20'}`}>
+              <Navigation className={`w-5 h-5 ${locationLoading ? 'animate-pulse' : ''}`} />
+              <span className="hidden sm:inline text-sm font-semibold">{lat ? 'Near Me' : 'Locate'}</span>
+            </button>
+
             <button type="submit" className="bg-gradient-to-r from-yellow-400 to-amber-500 text-black px-6 py-3 rounded-xl font-bold hover:shadow-lg hover:shadow-yellow-500/30 transition">Search</button>
             <button type="button" onClick={() => setShowFilters(!showFilters)} className="bg-white/10 border border-white/10 px-4 py-3 rounded-xl hover:bg-white/20 transition">
               <SlidersHorizontal className="w-5 h-5" />
@@ -83,6 +120,25 @@ const Cars = () => {
                   ))}
                 </div>
               </div>
+
+              {lat && lng && (
+                <div>
+                  <div className="flex justify-between items-center mb-2">
+                    <label className="text-sm text-gray-400">Distance Radius</label>
+                    <span className="text-sm font-bold text-yellow-400">{radius} km</span>
+                  </div>
+                  <input 
+                    type="range" min="1" max="100" step="1" 
+                    value={radius} 
+                    onChange={(e) => setRadius(e.target.value)} 
+                    className="w-full accent-yellow-400 h-2 bg-white/10 rounded-lg appearance-none cursor-pointer"
+                  />
+                  <div className="flex justify-between text-xs text-gray-500 mt-1">
+                    <span>1 km</span>
+                    <span>100 km</span>
+                  </div>
+                </div>
+              )}
             </motion.div>
           )}
         </motion.div>

@@ -67,6 +67,16 @@ const BookingConfirmation = () => {
               </div>
 
               <div className="bg-white/5 border border-white/10 rounded-2xl p-5">
+                <p className="text-sm text-yellow-500 mb-3 font-semibold uppercase tracking-wider">Guest Information</p>
+                <div className="grid grid-cols-2 gap-4 text-sm text-gray-300">
+                  <div><span className="text-gray-500 block text-xs">Name</span>{booking.customerName}</div>
+                  <div><span className="text-gray-500 block text-xs">Phone</span>{booking.customerPhone}</div>
+                  <div className="col-span-2"><span className="text-gray-500 block text-xs">Email</span>{booking.customerEmail}</div>
+                  {booking.note && <div className="col-span-2"><span className="text-gray-500 block text-xs">Items/Note</span>{booking.note}</div>}
+                </div>
+              </div>
+
+              <div className="bg-white/5 border border-white/10 rounded-2xl p-5">
                 <p className="text-sm text-gray-400 mb-3">Add-ons</p>
                 <div className="text-sm text-gray-300">
                   {booking.addOns?.length ? booking.addOns.join(', ') : 'None'}
@@ -81,8 +91,8 @@ const BookingConfirmation = () => {
               </div>
               <div>
                 <p className="text-sm text-gray-400">Total paid</p>
-                <p className="text-2xl font-black text-yellow-400">${booking.totalPrice}</p>
-                <p className="text-xs text-gray-500">({days} days, add-ons ${addOnsTotal})</p>
+                <p className="text-2xl font-black text-yellow-400">{booking.totalPrice.toLocaleString()} VNĐ</p>
+                <p className="text-xs text-gray-500">({days} days, add-ons {addOnsTotal.toLocaleString()} VNĐ)</p>
               </div>
               <div className="bg-green-500/10 border border-green-400/20 rounded-2xl px-4 py-3 text-sm text-green-300">Payment successful</div>
             </div>

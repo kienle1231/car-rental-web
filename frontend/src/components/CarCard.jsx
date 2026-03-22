@@ -29,7 +29,8 @@ const CarCard = ({ car }) => {
           <div>
             <h3 className="text-xl font-bold text-white">{car.brand} {car.model}</h3>
             <p className="text-xs text-gray-400 flex items-center gap-1 mt-1">
-              <MapPin className="w-3.5 h-3.5" /> {car.location || 'Global Hub'}
+              <MapPin className="w-3.5 h-3.5" /> 
+              {car.calculatedDistance ? <span className="text-yellow-400 font-bold bg-yellow-400/10 px-2 py-0.5 rounded-full">{(car.calculatedDistance / 1000).toFixed(1)} km from you</span> : (car.location || 'Global Hub')}
             </p>
           </div>
           <span className="text-xs text-gray-400">{car.year}</span>

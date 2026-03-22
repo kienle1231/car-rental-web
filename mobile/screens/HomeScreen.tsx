@@ -10,7 +10,7 @@ import {
   Image,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Video, ResizeMode } from 'expo-av';
+import { useVideoPlayer, VideoView } from 'expo-video';
 import { LinearGradient } from 'expo-linear-gradient';
 import Animated, {
   useAnimatedScrollHandler,
@@ -32,6 +32,7 @@ import {
   Flame,
   Star as StarIcon,
   Sparkles,
+  Navigation
 } from 'lucide-react-native';
 
 import {
@@ -51,6 +52,7 @@ const HERO_HEIGHT = height * 0.45;
 
 const categories = [
   { id: 'all', label: 'All Fleet', icon: <Globe size={18} /> },
+  { id: 'nearby', label: 'Nearby', icon: <Navigation size={18} /> },
   { id: 'electric', label: 'Electric', icon: <Zap size={18} /> },
   { id: 'luxury', label: 'Luxury', icon: <Trophy size={18} /> },
   { id: 'sport', label: 'Sport', icon: <Flame size={18} /> },
@@ -96,6 +98,12 @@ const HomeScreen = () => {
     return { opacity };
   });
 
+  const player = useVideoPlayer('https://assets.mixkit.co/videos/52427/52427-720.mp4', (player) => {
+    player.loop = true;
+    player.muted = true;
+    player.play();
+  });
+
   return (
     <View style={styles.container}>
       <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
@@ -109,13 +117,11 @@ const HomeScreen = () => {
         {/* CINEMATIC HERO */}
         <View style={styles.heroContainer}>
           <Animated.View style={[styles.heroBackground, heroAnimatedStyle]}>
-            <Video
-              source={{ uri: 'https://assets.mixkit.co/videos/52427/52427-720.mp4' }}
+            <VideoView
+              player={player}
               style={StyleSheet.absoluteFill}
-              shouldPlay
-              isLooping
-              isMuted
-              resizeMode={ResizeMode.COVER}
+              contentFit="cover"
+              nativeControls={false}
             />
             <LinearGradient
               colors={['transparent', 'rgba(2, 6, 23, 0.4)', 'rgba(2, 6, 23, 1)']}
@@ -172,7 +178,11 @@ const HomeScreen = () => {
               <PremiumPressable 
                 onPress={() => {
                   setActiveCategory(cat.id);
-                  router.push({ pathname: '/cars' as any, params: { type: cat.id === 'all' ? 'All' : cat.label } });
+                  if (cat.id === 'nearby') {
+                    router.push({ pathname: '/cars' as any, params: { locate: 'true' } });
+                  } else {
+                    router.push({ pathname: '/cars' as any, params: { type: cat.id === 'all' ? 'All' : cat.label } });
+                  }
                 }}
                 style={[
                   styles.categoryBtn, 

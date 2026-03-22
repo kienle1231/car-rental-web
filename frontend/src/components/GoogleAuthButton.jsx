@@ -47,7 +47,7 @@ const GoogleAuthButton = ({ onSuccess, onError }) => {
     });
 
     window.google.accounts.id.renderButton(buttonRef.current, {
-      theme: 'outline',
+      theme: 'filled_black',
       size: 'large',
       text: 'continue_with',
       shape: 'pill',
@@ -56,16 +56,9 @@ const GoogleAuthButton = ({ onSuccess, onError }) => {
   }, [ready, onSuccess, onError]);
 
   return (
-    <motion.button
-      whileHover={{ scale: 1.02 }}
-      whileTap={{ scale: 0.98 }}
-      type="button"
-      className="flex items-center justify-center gap-2 border border-white/10 rounded-2xl py-3 text-sm text-gray-200 hover:border-yellow-400/50 hover:text-yellow-200 transition relative"
-      onClick={() => window.google?.accounts?.id?.prompt()}
-    >
-      <Chrome className="w-4 h-4" /> Continue with Google
-      <span ref={buttonRef} className="absolute opacity-0 pointer-events-none" />
-    </motion.button>
+    <div className="flex justify-center w-full mt-2">
+      <div ref={buttonRef} className="flex items-center justify-center w-full" />
+    </div>
   );
 };
 
