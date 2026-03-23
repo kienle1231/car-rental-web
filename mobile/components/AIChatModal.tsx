@@ -13,13 +13,15 @@ import {
   Dimensions,
   Pressable,
 } from 'react-native';
-import { Send, X } from 'lucide-react-native';
+import { Send, X, ExternalLink } from 'lucide-react-native';
+import { useRouter } from 'expo-router';
 
 import { LuxuryColors, LuxuryTypography } from '@/constants/luxuryTheme';
 import { PremiumPressable } from '@/components/PremiumPressable';
 import { chatAIAPI } from '@/services/api';
 
 export interface SuggestedCar {
+  id?: string;
   carName: string;
   image: string;
   price: number;
@@ -45,6 +47,7 @@ const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 const MODAL_HEIGHT = SCREEN_HEIGHT * 0.62;
 
 const AIChatModal: React.FC<AIChatModalProps> = ({ visible, onClose }) => {
+  const router = useRouter();
   const [messages, setMessages] = useState<Message[]>([
     {
       id: '1',
@@ -162,20 +165,35 @@ const AIChatModal: React.FC<AIChatModalProps> = ({ visible, onClose }) => {
                   </Text>
                 </View>
 
-                {msg.suggestedCars && msg.suggestedCars.length > 0 && (
+                  {msg.suggestedCars && msg.suggestedCars.length > 0 && (
                   <ScrollView 
                     horizontal 
                     showsHorizontalScrollIndicator={false} 
                     style={styles.carCarousel} 
                     contentContainerStyle={styles.carCarouselContent}
+                    keyboardShouldPersistTaps="handled"
                   >
                     {msg.suggestedCars.map((car, idx) => (
                       <View key={idx} style={styles.carCard}>
                         <Image source={{ uri: car.image }} style={styles.carImage} resizeMode="cover" />
                         <View style={styles.carInfo}>
                           <Text style={styles.carName} numberOfLines={1}>{car.carName}</Text>
-                          <Text style={styles.carPrice}>${car.price}/ngày</Text>
-                          <Text style={styles.carReason} numberOfLines={3}>{car.reason}</Text>
+                          <Text style={styles.carPrice}>{Number(car.price).toLocaleString()} VNĐ/ngày</Text>
+                          <Text style={styles.carReason} numberOfLines={2}>{car.reason}</Text>
+                          {car.id && (
+                            <Pressable
+                              onPress={() => {
+                                onClose();
+                                setTimeout(() => {
+                                  router.push({ pathname: '/car/[id]', params: { id: car.id! } });
+                                }, 300);
+                              }}
+                              style={styles.detailBtn}
+                            >
+                              <ExternalLink size={12} color={LuxuryColors.background} />
+                              <Text style={styles.detailBtnText}>Xem chi tiết</Text>
+                            </Pressable>
+                          )}
                         </View>
                       </View>
                     ))}
@@ -420,6 +438,22 @@ const styles = StyleSheet.create({
     color: 'rgba(255,255,255,0.6)',
     fontSize: 11,
     lineHeight: 16,
+  },
+  detailBtn: {
+    marginTop: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    backgroundColor: LuxuryColors.accent,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 8,
+    alignSelf: 'flex-start',
+  },
+  detailBtnText: {
+    color: '#0a0a0a',
+    fontSize: 11,
+    fontWeight: '700',
   },
 });
 

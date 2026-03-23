@@ -1,0 +1,24 @@
+﻿[dotenv@17.3.1] injecting env (8) from .env -- tip: ΓÜÖ∩╕Å  override existing env vars with { override: true }
+
+====== CONNECTED TO DB ======
+
+Γ£à LOGIN admin: 200 {"_id":"69b59bf8123184499943563b","name":"Admin VIP","email":"admin@vip.com","role":"admin","token":"eyJhbGciOiJIUzI1NiI
+Γ£à REGISTER: 201 {"_id":"69c15cbe7595dacae5f1691d","name":"Test User","email":"test_1774279870132@test.com","role":"customer","token":"ey
+Γ£à LOGIN user: 200 {"_id":"69c15cbe7595dacae5f1691d","name":"Test User","email":"test_1774279870132@test.com","role":"customer","token":"ey
+Γ¥î REFRESH TOKEN: 404 "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n<meta charset=\"utf-8\">\n<title>Error</title>\n</head>\n<body>\n<pre>Cann
+Γ¥î CHANGE PASSWORD: 404 "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n<meta charset=\"utf-8\">\n<title>Error</title>\n</head>\n<body>\n<pre>Cann
+Γ¥î LOGIN new password: 401 {"message":"Invalid credentials"}
+Γ¥î LOGOUT ALL: 404 "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n<meta charset=\"utf-8\">\n<title>Error</title>\n</head>\n<body>\n<pre>Cann
+Γ¥î CREATE VOUCHER: 404 "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n<meta charset=\"utf-8\">\n<title>Error</title>\n</head>\n<body>\n<pre>Cann
+Γ¥î APPLY VOUCHER: 404 "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n<meta charset=\"utf-8\">\n<title>Error</title>\n</head>\n<body>\n<pre>Cann
+Γ¥î GET VOUCHERS: 404 "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n<meta charset=\"utf-8\">\n<title>Error</title>\n</head>\n<body>\n<pre>Cann
+Γ¥î ANALYTICS day: 404 "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n<meta charset=\"utf-8\">\n<title>Error</title>\n</head>\n<body>\n<pre>Cann
+Γ¥î ANALYTICS month: 404 "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n<meta charset=\"utf-8\">\n<title>Error</title>\n</head>\n<body>\n<pre>Cann
+Γ¥î GET NOTIFICATIONS: 404 "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n<meta charset=\"utf-8\">\n<title>Error</title>\n</head>\n<body>\n<pre>Cann
+Γ£à REVIEW blocked (no booking): 403 {"message":"You can only review cars from completed bookings."}
+Γ£à GET REVIEWS: 200 {"reviews":[],"stats":{"count":0,"avgRating":0}}
+Γ¥î CREATE BOOKING: 400 {"error":"Booking validation failed: totalPrice: Path `totalPrice` is required."}
+Γ¥î DOUBLE BOOKING should block: 400 {"error":"Booking validation failed: totalPrice: Path `totalPrice` is required."}
+
+====== ALL TESTS COMPLETE ======
+

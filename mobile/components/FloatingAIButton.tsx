@@ -38,7 +38,7 @@ const FloatingAIButton = () => {
 
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [{ scale: scale.value }],
-    shadowOpacity: interpolateGlow(glow.value),
+    opacity: interpolateGlow(glow.value),
   }));
 
   return (

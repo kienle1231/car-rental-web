@@ -8,6 +8,8 @@ import {
   View,
   StatusBar,
   Dimensions,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
@@ -73,8 +75,8 @@ const LoginScreen = () => {
     <View style={styles.container}>
       <StatusBar barStyle="light-content" translucent />
       
-      {/* VIDEO HERO BACKGROUND */}
-      <View style={styles.heroContainer}>
+      {/* FULL SCREEN VIDEO HERO BACKGROUND */}
+      <View style={StyleSheet.absoluteFill}>
         <VideoView
           player={player}
           style={StyleSheet.absoluteFill}
@@ -82,76 +84,87 @@ const LoginScreen = () => {
           nativeControls={false}
         />
         <LinearGradient
-          colors={['rgba(2, 6, 23, 0.4)', 'rgba(2, 6, 23, 0.8)', LuxuryColors.background]}
+          colors={['rgba(2, 6, 23, 0.3)', 'rgba(2, 6, 23, 0.6)', 'rgba(2, 6, 23, 0.9)']}
           style={StyleSheet.absoluteFill}
         />
-        
-        <Animated.View entering={FadeIn.delay(300)} style={styles.heroOverlay}>
-          <View style={styles.brandBadge}>
-            <ShieldCheck size={14} color={LuxuryColors.accent} />
-            <Text style={styles.brandBadgeText}>SECURE ACCESS</Text>
-          </View>
-          <Text style={styles.heroTitle}>Elite Entry</Text>
-          <Text style={styles.heroSubtitle}>
-            Unlock the doors to the world's most{"\n"}exclusive automotive collections.
-          </Text>
-        </Animated.View>
       </View>
 
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        <Animated.View entering={FadeInDown.delay(500).springify()}>
-          <GlassCard style={styles.authCard}>
-            <Text style={styles.cardTitle}>Welcome Back</Text>
-            <Text style={styles.cardSubtitle}>Sign in to your private showroom</Text>
-
-            {errorMessage ? (
-              <Animated.View entering={FadeIn} style={styles.errorBox}>
-                <Text style={styles.errorText}>{errorMessage}</Text>
-              </Animated.View>
-            ) : null}
-
-            <View style={styles.inputGap}>
-              <LuxuryInput
-                label="CLIENT EMAIL"
-                value={form.email}
-                onChangeText={(v) => setForm((p) => ({ ...p, email: v }))}
-                placeholder="you@exclusive.com"
-                autoCapitalize="none"
-              />
-              <LuxuryInput
-                label="PASSCODE"
-                value={form.password}
-                onChangeText={(v) => setForm((p) => ({ ...p, password: v }))}
-                placeholder="••••••••"
-                secureTextEntry
-              />
-              <PremiumPressable 
-                onPress={() => router.push('/forgot-password' as any)} 
-                style={styles.forgotPassBtn}
-              >
-                <Text style={styles.forgotPassText}>Forgot Passcode?</Text>
-              </PremiumPressable>
+      <KeyboardAvoidingView 
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      >
+        <ScrollView 
+          contentContainerStyle={styles.scrollContent} 
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+        >
+        <SafeAreaView style={styles.safeArea}>
+          <Animated.View entering={FadeIn.delay(300)} style={styles.heroOverlay}>
+            <View style={styles.brandBadge}>
+              <ShieldCheck size={14} color={LuxuryColors.accent} />
+              <Text style={styles.brandBadgeText}>SECURE ACCESS</Text>
             </View>
+            <Text style={styles.heroTitle}>Elite Entry</Text>
+            <Text style={styles.heroSubtitle}>
+              Unlock the doors to the world's most{"\n"}exclusive automotive collections.
+            </Text>
+          </Animated.View>
 
-            <LuxuryButton 
-              title={loading ? 'VERIFYING...' : 'LOGIN TO FLEET'} 
-              onPress={handleSubmit} 
-              disabled={loading}
-            />
+          <Animated.View entering={FadeInDown.delay(500).springify()} style={styles.formWrapper}>
+            <GlassCard style={styles.authCard}>
+              <Text style={styles.cardTitle}>Welcome Back</Text>
+              <Text style={styles.cardSubtitle}>Sign in to your private showroom</Text>
 
-            <PremiumPressable onPress={() => router.push('/register')} style={styles.switchAuth}>
-              <Text style={styles.switchAuthText}>
-                No account? <Text style={{ color: LuxuryColors.accent }}>Request Invitation</Text>
-              </Text>
-            </PremiumPressable>
-          </GlassCard>
-        </Animated.View>
+              {errorMessage ? (
+                <Animated.View entering={FadeIn} style={styles.errorBox}>
+                  <Text style={styles.errorText}>{errorMessage}</Text>
+                </Animated.View>
+              ) : null}
 
-        <View style={styles.footer}>
-          <Text style={styles.footerText}>© 2024 LUXERIDE PRIVATE LIMITED</Text>
-          <Text style={styles.footerSubText}>Terms of Excellence • Privacy Policy</Text>
-        </View>
+              <View style={styles.inputGap}>
+                <LuxuryInput
+                  label="CLIENT EMAIL"
+                  value={form.email}
+                  onChangeText={(v) => setForm((p) => ({ ...p, email: v }))}
+                  placeholder="you@exclusive.com"
+                  autoCapitalize="none"
+                />
+                <LuxuryInput
+                  label="PASSCODE"
+                  value={form.password}
+                  onChangeText={(v) => setForm((p) => ({ ...p, password: v }))}
+                  placeholder="••••••••"
+                  secureTextEntry
+                />
+                <PremiumPressable 
+                  onPress={() => router.push('/forgot-password' as any)} 
+                  style={styles.forgotPassBtn}
+                >
+                  <Text style={styles.forgotPassText}>Forgot Passcode?</Text>
+                </PremiumPressable>
+              </View>
+
+              <LuxuryButton 
+                title={loading ? 'VERIFYING...' : 'LOGIN TO FLEET'} 
+                onPress={handleSubmit} 
+                disabled={loading}
+              />
+
+              <PremiumPressable onPress={() => router.push('/register')} style={styles.switchAuth}>
+                <Text style={styles.switchAuthText}>
+                  No account? <Text style={{ color: LuxuryColors.accent }}>Request Invitation</Text>
+                </Text>
+              </PremiumPressable>
+            </GlassCard>
+            
+            <View style={styles.footer}>
+              <Text style={styles.footerText}>© 2024 LUXERIDE PRIVATE LIMITED</Text>
+              <Text style={styles.footerSubText}>Terms of Excellence • Privacy Policy</Text>
+            </View>
+          </Animated.View>
+        </SafeAreaView>
       </ScrollView>
+    </KeyboardAvoidingView>
 
       <PremiumPressable onPress={() => router.canGoBack() ? router.back() : router.replace('/(tabs)')} style={styles.backBtn}>
         <ChevronLeft size={24} color="#FFF" />
@@ -163,26 +176,28 @@ const LoginScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    minHeight: height,
     backgroundColor: LuxuryColors.background,
   },
-  heroContainer: {
-    height: height * 0.45,
-    width: '100%',
+  safeArea: {
+    flex: 1,
+    paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0,
   },
   heroOverlay: {
-    paddingHorizontal: 30,
-    paddingTop: height * 0.15,
+    paddingHorizontal: 20,
+    paddingTop: height * 0.08,
+    marginBottom: 20,
   },
   brandBadge: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    backgroundColor: 'rgba(255,255,255,0.05)',
+    backgroundColor: 'rgba(255,255,255,0.08)',
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: LuxuryRadius.full,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.1)',
+    borderColor: 'rgba(255,255,255,0.15)',
     alignSelf: 'flex-start',
     marginBottom: 16,
   },
@@ -198,13 +213,17 @@ const styles = StyleSheet.create({
   },
   heroSubtitle: {
     ...LuxuryTypography.body,
-    color: 'rgba(255,255,255,0.6)',
+    color: 'rgba(255,255,255,0.7)',
     lineHeight: 22,
   },
   scrollContent: {
-    marginTop: -60,
-    paddingHorizontal: 20,
+    flexGrow: 1,
     paddingBottom: 40,
+  },
+  formWrapper: {
+    paddingHorizontal: 20,
+    flex: 1,
+    justifyContent: 'center',
   },
   authCard: {
     padding: 30,
@@ -246,7 +265,7 @@ const styles = StyleSheet.create({
   },
   backBtn: {
     position: 'absolute',
-    top: 50,
+    top: Platform.OS === 'ios' ? 60 : (StatusBar.currentHeight || 20) + 15,
     left: 20,
     width: 44,
     height: 44,
@@ -254,6 +273,8 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(2, 6, 23, 0.4)',
     alignItems: 'center',
     justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.15)'
   },
   footer: {
     marginTop: 40,

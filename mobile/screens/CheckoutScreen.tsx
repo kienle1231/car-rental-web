@@ -13,15 +13,14 @@ import {
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { 
   ChevronLeft, 
-  CreditCard, 
   ShieldCheck, 
   Calendar, 
   MapPin, 
   Check,
   Lock,
-  Apple,
   QrCode,
-  Timer
+  Timer,
+  Tag
 } from 'lucide-react-native';
 import { BlurView } from 'expo-blur';
 import Animated, { FadeInDown, FadeInRight, FadeIn } from 'react-native-reanimated';
@@ -30,8 +29,7 @@ import { LuxuryColors, LuxurySpacing, LuxuryTypography, LuxuryRadius } from '@/c
 import { PremiumPressable } from '@/components/PremiumPressable';
 import GlassCard from '@/components/GlassCard';
 import LuxuryModal from '@/components/LuxuryModal';
-import BiometricModal from '@/components/BiometricModal';
-import { createBookingAPI, confirmPaymentAPI } from '@/services/api';
+import { createBookingAPI, confirmPaymentAPI, applyVoucherAPI } from '@/services/api';
 
 const { width } = Dimensions.get('window');
 
@@ -44,10 +42,7 @@ const CheckoutScreen = () => {
   const parsedBooking = bookingData ? JSON.parse(bookingData as string) : null;
   
   const [loading, setLoading] = useState(false);
-  const [paymentMethod, setPaymentMethod] = useState('vietqr');
-  const [cardNumber, setCardNumber] = useState('');
-  const [expiry, setExpiry] = useState('');
-  const [cvv, setCvv] = useState('');
+  const [paymentMethod] = useState('vietqr'); // Only VietQR supported
 
   // Guest Information State
   const [customerForm, setCustomerForm] = useState({
@@ -61,8 +56,17 @@ const CheckoutScreen = () => {
   const [qrStep, setQrStep] = useState(false);
   const [pendingBookingId, setPendingBookingId] = useState('');
   const [qrTimer, setQrTimer] = useState(30);
-  const [biometricVisible, setBiometricVisible] = useState(false);
   const [modalConfig, setModalConfig] = useState<any>({ visible: false, type: 'success', title: '', message: '' });
+
+  // Voucher state
+  const [voucherCode, setVoucherCode] = useState('');
+  const [voucherLoading, setVoucherLoading] = useState(false);
+  const [appliedVoucher, setAppliedVoucher] = useState<null | { discount: number; discountAmount: number; finalPrice: number }>(null);
+
+  // Pricing from server (set after booking created)
+  const [serverPricing, setServerPricing] = useState<null | { totalDays: number; basePrice: number; serviceFee: number; tax: number; totalPrice: number }>(null);
+
+  const displayTotal = appliedVoucher ? appliedVoucher.finalPrice : parseFloat(totalPrice as string);
 
   // Handle auto payment confirmation timer
   useEffect(() => {
@@ -77,43 +81,41 @@ const CheckoutScreen = () => {
     return () => clearInterval(interval);
   }, [qrStep, qrTimer]);
 
+  const handleApplyVoucher = async () => {
+    if (!voucherCode.trim()) return;
+    setVoucherLoading(true);
+    try {
+      const { data } = await applyVoucherAPI(voucherCode.trim(), parseFloat(totalPrice as string));
+      setAppliedVoucher(data);
+    } catch (error: any) {
+      setModalConfig({
+        visible: true, type: 'warning', title: 'Voucher Invalid',
+        message: error.response?.data?.message || 'Invalid or expired voucher code.',
+        onConfirm: () => setModalConfig({ ...modalConfig, visible: false })
+      });
+    } finally {
+      setVoucherLoading(false);
+    }
+  };
+
   const handlePay = async () => {
     if (!customerForm.name || !customerForm.email || !customerForm.phone) {
       setModalConfig({
-        visible: true,
-        type: 'warning',
-        title: 'Missing Info',
+        visible: true, type: 'warning', title: 'Missing Info',
         message: 'Please fill in all required Guest Information fields.',
         onConfirm: () => setModalConfig({ ...modalConfig, visible: false })
       });
       return;
     }
-
-    if (paymentMethod === 'card' && (!cardNumber || !expiry || !cvv)) {
-      setModalConfig({
-        visible: true,
-        type: 'warning',
-        title: 'Missing Info',
-        message: 'Please complete your payment card details.',
-        onConfirm: () => setModalConfig({ ...modalConfig, visible: false })
-      });
-      return;
-    }
-    setBiometricVisible(true);
-  };
-
-  const processPayment = async () => {
-    setBiometricVisible(false);
     setLoading(true);
     try {
+      // Server calculates totalPrice from car pricePerDay + addOns + fees
       const finalBookingData = {
         car: id,
         pickupDate: parsedBooking.pickupDate,
         returnDate: parsedBooking.returnDate,
         pickupLocation: parsedCar?.location || 'Main Hub',
         addOns: parsedBooking.addOns || [],
-        totalPrice: parseFloat(totalPrice as string),
-        paymentStatus: paymentMethod === 'vietqr' ? 'pending' : 'paid',
         paymentMethod: paymentMethod,
         customerName: customerForm.name,
         customerEmail: customerForm.email,
@@ -123,29 +125,25 @@ const CheckoutScreen = () => {
 
       const res = await createBookingAPI(finalBookingData);
 
+      // Store server pricing for UI
+      if (res.data.pricing) setServerPricing(res.data.pricing);
+
       if (paymentMethod === 'vietqr') {
         setPendingBookingId(res.data._id);
         setQrStep(true);
         setQrTimer(30);
       } else {
         setModalConfig({
-          visible: true,
-          type: 'success',
-          title: 'Payment Secured',
+          visible: true, type: 'success', title: 'Payment Secured',
           message: 'Your luxury journey has been officially reserved. Confirmation sent to your email.',
           confirmText: 'View My ITINERARY',
-          onConfirm: () => {
-            setModalConfig({ ...modalConfig, visible: false });
-            router.push('/(tabs)/bookings');
-          }
+          onConfirm: () => { setModalConfig({ ...modalConfig, visible: false }); router.push('/(tabs)/bookings'); }
         });
       }
     } catch (error: any) {
       console.error('Payment error:', error);
       setModalConfig({
-        visible: true,
-        type: 'error',
-        title: 'Transaction Failed',
+        visible: true, type: 'error', title: 'Transaction Failed',
         message: error.response?.data?.error || 'Unable to process payment.',
         onConfirm: () => setModalConfig({ ...modalConfig, visible: false })
       });
@@ -181,26 +179,6 @@ const CheckoutScreen = () => {
       setLoading(false);
     }
   };
-
-  const PaymentOption = ({ _id, icon: Icon, label }: any) => (
-    <PremiumPressable
-      onPress={() => setPaymentMethod(_id)}
-      style={[
-        styles.methodCard,
-        paymentMethod === _id && styles.methodCardActive
-      ]}
-    >
-      <View style={styles.methodHeader}>
-        <View style={[styles.methodIcon, paymentMethod === _id && { backgroundColor: LuxuryColors.accent }]}>
-          <Icon size={20} color={paymentMethod === _id ? LuxuryColors.background : LuxuryColors.accent} />
-        </View>
-        <Text style={[styles.methodLabel, paymentMethod === _id && { color: '#FFF' }]}>{label}</Text>
-      </View>
-      <View style={[styles.radio, paymentMethod === _id && styles.radioActive]}>
-        {paymentMethod === _id && <View style={styles.radioInner} />}
-      </View>
-    </PremiumPressable>
-  );
 
   if (qrStep) {
     // Generate VietQR formatting
@@ -354,54 +332,47 @@ const CheckoutScreen = () => {
 
         <Animated.View entering={FadeInDown.delay(200)} style={styles.section}>
           <Text style={styles.sectionTitle}>PAYMENT METHOD</Text>
-          <View style={styles.methodsGrid}>
-            <PaymentOption _id="vietqr" icon={QrCode} label="VietQR" />
-            <PaymentOption _id="card" icon={CreditCard} label="Credit Card" />
-            <PaymentOption _id="apple" icon={Apple} label="Apple Pay" />
-          </View>
+          <GlassCard style={[styles.paymentCard, { flexDirection: 'row', alignItems: 'center', gap: 14, padding: 16 }]}>
+            <View style={[styles.methodIcon, { backgroundColor: LuxuryColors.accent }]}>
+              <QrCode size={22} color={LuxuryColors.background} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.methodLabel, { color: '#FFF', fontSize: 15 }]}>VietQR Transfer</Text>
+              <Text style={{ color: LuxuryColors.textMuted, fontSize: 12, marginTop: 2 }}>Scan QR with any banking app</Text>
+            </View>
+            <View style={styles.radioActive}>
+              <View style={styles.radioInner} />
+            </View>
+          </GlassCard>
         </Animated.View>
 
-        {paymentMethod === 'card' && (
-          <Animated.View entering={FadeInRight} style={styles.cardInputSection}>
-            <GlassCard style={styles.paymentCard}>
-              <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>CARD NUMBER</Text>
-                <TextInput
-                  placeholder="0000 0000 0000 0000"
-                  placeholderTextColor="rgba(255,255,255,0.2)"
-                  style={styles.input}
-                  value={cardNumber}
-                  onChangeText={setCardNumber}
-                  keyboardType="numeric"
-                />
+        {/* Voucher Code */}
+        <Animated.View entering={FadeInDown.delay(250)} style={styles.section}>
+          <Text style={styles.sectionTitle}>PROMO CODE</Text>
+          <GlassCard style={{ padding: 16 }}>
+            <View style={styles.row}>
+              <TextInput
+                placeholder="Enter voucher code"
+                placeholderTextColor="rgba(255,255,255,0.2)"
+                style={[styles.input, { flex: 1, marginRight: 10 }]}
+                value={voucherCode}
+                onChangeText={setVoucherCode}
+                autoCapitalize="characters"
+              />
+              <PremiumPressable onPress={handleApplyVoucher} style={styles.voucherBtn} disabled={voucherLoading}>
+                {voucherLoading
+                  ? <ActivityIndicator size="small" color={LuxuryColors.background} />
+                  : <Tag size={16} color={LuxuryColors.background} />}
+              </PremiumPressable>
+            </View>
+            {appliedVoucher && (
+              <View style={{ marginTop: 8, flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                <Text style={{ color: LuxuryColors.success, ...LuxuryTypography.caption }}>✓ {appliedVoucher.discount}% OFF applied!</Text>
+                <Text style={{ color: LuxuryColors.textMuted, ...LuxuryTypography.caption }}>Save {appliedVoucher.discountAmount.toLocaleString()} VNĐ</Text>
               </View>
-              <View style={styles.row}>
-                <View style={[styles.inputGroup, { flex: 2 }]}>
-                  <Text style={styles.inputLabel}>EXPIRY DATE</Text>
-                  <TextInput
-                    placeholder="MM/YY"
-                    placeholderTextColor="rgba(255,255,255,0.2)"
-                    style={styles.input}
-                    value={expiry}
-                    onChangeText={setExpiry}
-                  />
-                </View>
-                <View style={[styles.inputGroup, { flex: 1 }]}>
-                  <Text style={styles.inputLabel}>CVV</Text>
-                  <TextInput
-                    placeholder="***"
-                    placeholderTextColor="rgba(255,255,255,0.2)"
-                    style={styles.input}
-                    value={cvv}
-                    onChangeText={setCvv}
-                    keyboardType="numeric"
-                    secureTextEntry
-                  />
-                </View>
-              </View>
-            </GlassCard>
-          </Animated.View>
-        )}
+            )}
+          </GlassCard>
+        </Animated.View>
 
         <View style={styles.securityNote}>
           <Lock size={14} color={LuxuryColors.success} />
@@ -412,9 +383,22 @@ const CheckoutScreen = () => {
       </ScrollView>
 
       <BlurView intensity={30} tint="dark" style={styles.footer}>
+        {/* Pricing breakdown */}
+        <View style={styles.breakdownBox}>
+          <View style={styles.breakdownRow}>
+            <Text style={styles.breakdownLabel}>Subtotal</Text>
+            <Text style={styles.breakdownValue}>{Number(totalPrice).toLocaleString()} VNĐ</Text>
+          </View>
+          {appliedVoucher && (
+            <View style={styles.breakdownRow}>
+              <Text style={[styles.breakdownLabel, { color: LuxuryColors.success }]}>Voucher ({appliedVoucher.discount}%)</Text>
+              <Text style={[styles.breakdownValue, { color: LuxuryColors.success }]}>-{appliedVoucher.discountAmount.toLocaleString()} VNĐ</Text>
+            </View>
+          )}
+        </View>
         <View style={styles.totalRow}>
           <Text style={styles.totalLabel}>Total Payable</Text>
-          <Text style={styles.totalValue}>{Number(totalPrice).toLocaleString()} VNĐ</Text>
+          <Text style={styles.totalValue}>{Number(displayTotal).toLocaleString()} VNĐ</Text>
         </View>
         <PremiumPressable 
           onPress={handlePay} 
@@ -441,12 +425,6 @@ const CheckoutScreen = () => {
         onConfirm={modalConfig.onConfirm}
       />
 
-      <BiometricModal 
-        visible={biometricVisible}
-        type={paymentMethod === 'apple' ? 'face' : 'fingerprint'}
-        onSuccess={processPayment}
-        onCancel={() => setBiometricVisible(false)}
-      />
     </View>
   );
 };
@@ -749,6 +727,32 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 12,
     width: '100%',
+  },
+  voucherBtn: {
+    width: 48, height: 48,
+    borderRadius: LuxuryRadius.md,
+    backgroundColor: LuxuryColors.accent,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  breakdownBox: {
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255,255,255,0.07)',
+    marginBottom: 12,
+    paddingBottom: 10,
+    gap: 6,
+  },
+  breakdownRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  breakdownLabel: {
+    ...LuxuryTypography.caption,
+    color: LuxuryColors.textMuted,
+  },
+  breakdownValue: {
+    ...LuxuryTypography.caption,
+    color: LuxuryColors.textSecondary,
   },
 });
 

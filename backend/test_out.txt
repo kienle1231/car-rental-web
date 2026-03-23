@@ -1,0 +1,20 @@
+--- TEST START ---
+PASS [LOGIN admin] 200 admin
+PASS [REGISTER] 201 test1774280158595@mail.com
+PASS [LOGIN user] 200 got refreshToken=YES
+PASS [REFRESH_TOKEN] 200 got new token
+PASS [CHANGE_PASSWORD] 200 Password changed. Please log in again on all devices.
+PASS [LOGIN new pass] 200 
+PASS [LOGOUT_ALL] 200 Logged out from all devices
+PASS [REFRESH_REVOKED (expected 401)] 401 
+PASS [CREATE_VOUCHER] 201 DEMO1774280161919
+PASS [APPLY_VOUCHER] 200 discount=100 final=400
+PASS [GET_VOUCHERS] 200 count=1
+PASS [ANALYTICS_MONTH] 200 entries=7
+PASS [ANALYTICS_DAY] 200 entries=30
+PASS [GET_NOTIFICATIONS] 200 count=0
+PASS [REVIEW_BLOCKED_NO_BOOKING (expected fail)] 404 Booking not found
+PASS [CREATE_BOOKING + PRICING] 201 days=3 fee=6006 tax=4804.8 total=70870.8
+PASS [DOUBLE_BOOKING_BLOCKED (expected 409)] 409 Car is unavailable for the selected dates.
+
+=== ALL TESTS DONE ===

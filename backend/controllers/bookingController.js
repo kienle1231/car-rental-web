@@ -7,7 +7,7 @@ const hasOverlap = (startA, endA, startB, endB) => {
 exports.createBooking = async (req, res) => {
   try {
     const {
-      car,
+      car: carId,
       pickupDate,
       returnDate,
       pickupLocation,
@@ -15,49 +15,68 @@ exports.createBooking = async (req, res) => {
       dropoffLocationCoords,
       distanceKm,
       addOns,
-      paymentStatus,
       paymentMethod,
       transactionId,
-      totalPrice,
       customerName,
       customerEmail,
       customerPhone,
       note
     } = req.body;
 
-    const existingBookings = await Booking.find({ car, status: { $in: ['Approved', 'Pending'] } });
+    // 1. Conflict check
+    const existingBookings = await Booking.find({ car: carId, status: { $in: ['Approved', 'Pending'] } });
     const requestedStart = new Date(pickupDate);
     const requestedEnd = new Date(returnDate);
-    const conflict = existingBookings.some((booking) => {
-      return hasOverlap(requestedStart, requestedEnd, new Date(booking.pickupDate), new Date(booking.returnDate));
-    });
+    const conflict = existingBookings.some((b) =>
+      hasOverlap(requestedStart, requestedEnd, new Date(b.pickupDate), new Date(b.returnDate))
+    );
+    if (conflict) return res.status(409).json({ error: 'Car is unavailable for the selected dates.' });
 
-    if (conflict) {
-      return res.status(409).json({ error: 'Car is unavailable for the selected dates.' });
-    }
+    // 2. Pricing breakdown
+    const Car = require('../models/Car');
+    const carDoc = await Car.findById(carId);
+    if (!carDoc) return res.status(404).json({ error: 'Car not found' });
+
+    const totalDays = Math.max(1, Math.ceil((requestedEnd - requestedStart) / 86400000));
+    const basePrice = carDoc.pricePerDay * totalDays;
+
+    // Add-ons pricing
+    const addOnPrices = { basic_insurance: 12, premium_insurance: 28, gps: 8, child_seat: 6 };
+    const addOnsTotal = (addOns || []).reduce((sum, a) => sum + (addOnPrices[a] || 0) * totalDays, 0);
+
+    const subtotal = basePrice + addOnsTotal;
+    const serviceFee = Math.round(subtotal * 0.10 * 100) / 100; // 10%
+    const tax = Math.round(subtotal * 0.08 * 100) / 100;        // 8%
+    const totalPrice = Math.round((subtotal + serviceFee + tax) * 100) / 100;
+
+    const paymentStatus = paymentMethod === 'vietqr' ? 'pending' : 'paid';
+    // Auto-approve card payments; VietQR stays Pending until QR scan confirmed
+    const bookingStatus = paymentStatus === 'paid' ? 'Approved' : 'Pending';
 
     const booking = await Booking.create({
       user: req.user.id,
-      car,
-      pickupDate,
-      returnDate,
-      pickupLocation,
-      pickupLocationCoords,
-      dropoffLocationCoords,
-      distanceKm,
-      addOns,
-      paymentStatus,
-      paymentMethod,
-      transactionId,
-      totalPrice,
-      customerName,
-      customerEmail,
-      customerPhone,
-      note
+      car: carId,
+      pickupDate, returnDate,
+      pickupLocation, pickupLocationCoords, dropoffLocationCoords, distanceKm,
+      addOns, paymentStatus, paymentMethod, transactionId,
+      totalPrice, customerName, customerEmail, customerPhone, note,
+      status: bookingStatus
     });
-    res.status(201).json(booking);
+
+    // In-app notification (non-blocking)
+    const { pushNotification } = require('./adminController');
+    const notifMsg = bookingStatus === 'Approved'
+      ? `Đặt xe ${carDoc.brand} ${carDoc.model} thành công! (${new Date(pickupDate).toLocaleDateString()} → ${new Date(returnDate).toLocaleDateString()})`
+      : `Đặt xe ${carDoc.brand} ${carDoc.model} đang chờ xác nhận thanh toán VietQR.`;
+    pushNotification(req.user.id, bookingStatus === 'Approved' ? '✅ Đặt xe thành công!' : '⏳ Chờ xác nhận QR', notifMsg, 'booking', booking._id.toString());
+
+    res.status(201).json({
+      ...booking.toObject(),
+      pricing: { totalDays, basePrice, addOnsTotal, serviceFee, tax, totalPrice }
+    });
   } catch (error) { res.status(400).json({ error: error.message }); }
 };
+
 
 exports.getBookingById = async (req, res) => {
   try {
@@ -84,7 +103,7 @@ exports.getAvailabilityByCar = async (req, res) => {
   try {
     const bookings = await Booking.find({
       car: req.params.carId,
-      status: { $in: ['Approved', 'Completed'] }
+      status: { $in: ['Pending', 'Approved', 'Completed'] }
     }).select('pickupDate returnDate status');
     res.json(bookings);
   } catch (error) { res.status(500).json({ error: error.message }); }

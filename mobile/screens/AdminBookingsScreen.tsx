@@ -84,19 +84,22 @@ const AdminBookingsScreen = () => {
     const isApproved = status === 'Approved';
     const isCancelled = status === 'Cancelled';
     const isPending = status === 'Pending';
+    const isCompleted = status === 'Completed';
 
     return (
       <View style={[
         styles.statusPill,
         isApproved && styles.pillApproved,
         isCancelled && styles.pillCancelled,
-        isPending && styles.pillPending
+        isPending && styles.pillPending,
+        isCompleted && styles.pillCompleted,
       ]}>
         <Text style={[
           styles.pillText,
           isApproved && styles.textApproved,
           isCancelled && styles.textCancelled,
-          isPending && styles.textPending
+          isPending && styles.textPending,
+          isCompleted && styles.textCompleted,
         ]}>{status.toUpperCase()}</Text>
       </View>
     );
@@ -113,7 +116,7 @@ const AdminBookingsScreen = () => {
             </View>
           </View>
           <Text style={styles.title}>Global Reservations</Text>
-          <Text style={styles.subtitle}>Oversee elite fleet movements and approvals</Text>
+          <Text style={styles.subtitle}>Pending = chờ chuyển QR · Approved = đã thanh toán · Complete khi xe trả về</Text>
         </View>
 
         {/* STATUS FILTERS */}
@@ -195,19 +198,19 @@ const AdminBookingsScreen = () => {
 
                   <View style={styles.footer}>
                     <View>
-                      <Text style={styles.priceLabel}>ESTIMATED REVENUE</Text>
-                      <Text style={styles.priceValue}>${b.totalPrice?.toLocaleString()}</Text>
+                      <Text style={styles.priceLabel}>TOTAL REVENUE</Text>
+                      <Text style={styles.priceValue}>{b.totalPrice?.toLocaleString()} VNĐ</Text>
+                      <Text style={[styles.priceLabel, { marginTop: 4 }]}>
+                        {b.paymentStatus === 'paid' ? '💳 Đã thanh toán' : '⏳ Chờ chuyển khoản'}
+                      </Text>
                     </View>
                     
                     {b.status === 'Pending' && (
                       <View style={styles.actions}>
-                        <PremiumPressable 
-                          onPress={() => handleStatusUpdate(b._id, 'Approved')} 
-                          style={[styles.actionBtn, styles.approveBtn]}
-                        >
-                          <CheckCircle2 size={16} color={LuxuryColors.background} />
-                          <Text style={styles.approveBtnText}>Accept</Text>
-                        </PremiumPressable>
+                        <View style={styles.pendingInfo}>
+                          <Clock size={13} color={LuxuryColors.accent} />
+                          <Text style={styles.pendingInfoText}>Chờ QR</Text>
+                        </View>
                         <PremiumPressable 
                           onPress={() => handleStatusUpdate(b._id, 'Cancelled')} 
                           style={[styles.actionBtn, styles.cancelActionBtn]}
@@ -224,7 +227,7 @@ const AdminBookingsScreen = () => {
                           style={[styles.actionBtn, styles.completeBtn]}
                         >
                           <RotateCcw size={16} color={LuxuryColors.background} />
-                          <Text style={styles.approveBtnText}>Return</Text>
+                          <Text style={styles.approveBtnText}>Trả xe</Text>
                         </PremiumPressable>
                       </View>
                     )}
@@ -358,10 +361,18 @@ const styles = StyleSheet.create({
   pillApproved: { backgroundColor: 'rgba(16, 185, 129, 0.1)', borderColor: 'rgba(16, 185, 129, 0.3)' },
   pillCancelled: { backgroundColor: 'rgba(239, 68, 68, 0.1)', borderColor: 'rgba(239, 68, 68, 0.3)' },
   pillPending: { backgroundColor: 'rgba(234, 179, 8, 0.1)', borderColor: 'rgba(234, 179, 8, 0.3)' },
+  pillCompleted: { backgroundColor: 'rgba(99, 102, 241, 0.1)', borderColor: 'rgba(99, 102, 241, 0.3)' },
   pillText: { fontSize: 10, fontWeight: '800', letterSpacing: 1 },
   textApproved: { color: LuxuryColors.success },
   textCancelled: { color: LuxuryColors.danger },
   textPending: { color: LuxuryColors.accent },
+  textCompleted: { color: '#818cf8' },
+  pendingInfo: {
+    flexDirection: 'row', alignItems: 'center', gap: 4,
+    backgroundColor: 'rgba(234,179,8,0.08)', paddingHorizontal: 10,
+    paddingVertical: 6, borderRadius: 8, borderWidth: 1, borderColor: 'rgba(234,179,8,0.2)',
+  },
+  pendingInfoText: { color: LuxuryColors.accent, fontSize: 11, fontWeight: '600' },
   
   clientSection: {
     flexDirection: 'row',

@@ -151,7 +151,7 @@ const AIChatScreen = () => {
               </GlassCard>
             </View>
 
-            {msg.suggestedCars && msg.suggestedCars.length > 0 && (
+              {msg.suggestedCars && msg.suggestedCars.length > 0 && (
               <ScrollView 
                 horizontal 
                 showsHorizontalScrollIndicator={false} 
@@ -164,7 +164,11 @@ const AIChatScreen = () => {
                     entering={FadeInDown.delay(200 + idx * 100)}
                   >
                     <PremiumPressable 
-                      onPress={() => car.id && router.push(`/car/${car.id}`)}
+                      onPress={() => {
+                        if (car.id) {
+                          router.push({ pathname: '/car/[id]', params: { id: car.id } });
+                        }
+                      }}
                       style={styles.carCard}
                     >
                       <Image source={{ uri: car.image }} style={styles.carImage} />
@@ -175,11 +179,13 @@ const AIChatScreen = () => {
                       </View>
                       <View style={styles.carInfo}>
                         <Text style={styles.carName}>{car.carName}</Text>
-                        <Text style={styles.carPrice}>${car.price}<Text style={styles.perDay}>/d</Text></Text>
+                        <Text style={styles.carPrice}>{Number(car.price).toLocaleString()}<Text style={styles.perDay}>/ngày</Text></Text>
                         <View style={styles.carLocRow}>
                           <MapPin size={10} color="rgba(255,255,255,0.6)" />
                           <Text style={styles.carLocText}>{car.location}</Text>
                         </View>
+                        {/* Deep link label */}
+                        <Text style={styles.viewDetail}>Xem chi tiết →</Text>
                       </View>
                     </PremiumPressable>
                   </Animated.View>
@@ -457,6 +463,13 @@ const styles = StyleSheet.create({
     ...LuxuryTypography.caption,
     color: LuxuryColors.textSecondary,
     fontWeight: '700',
+  },
+  viewDetail: {
+    ...LuxuryTypography.tiny,
+    color: LuxuryColors.accent,
+    marginTop: 4,
+    fontWeight: '700',
+    fontSize: 9,
   },
 });
 
