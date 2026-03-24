@@ -77,6 +77,12 @@ exports.createBooking = async (req, res) => {
   } catch (error) { res.status(400).json({ error: error.message }); }
 };
 
+exports.getMyBookings = async (req, res) => {
+  try {
+    const bookings = await Booking.find({ user: req.user.id }).populate('car');
+    res.json(bookings);
+  } catch (error) { res.status(500).json({ error: error.message }); }
+};
 
 exports.getBookingById = async (req, res) => {
   try {
@@ -92,9 +98,11 @@ exports.getBookingById = async (req, res) => {
   } catch (error) { res.status(500).json({ error: error.message }); }
 };
 
-exports.getMyBookings = async (req, res) => {
+exports.getAvailabilityCalendar = async (req, res) => {
   try {
-    const bookings = await Booking.find({ user: req.user.id }).populate('car');
+    const bookings = await Booking.find({ status: { $in: ['Approved', 'Completed'] } })
+      .populate('car', 'name brand imageUrl')
+      .select('pickupDate returnDate status car');
     res.json(bookings);
   } catch (error) { res.status(500).json({ error: error.message }); }
 };
@@ -109,14 +117,6 @@ exports.getAvailabilityByCar = async (req, res) => {
   } catch (error) { res.status(500).json({ error: error.message }); }
 };
 
-exports.getAvailabilityCalendar = async (req, res) => {
-  try {
-    const bookings = await Booking.find({ status: { $in: ['Approved', 'Completed'] } })
-      .populate('car', 'name brand imageUrl')
-      .select('pickupDate returnDate status car');
-    res.json(bookings);
-  } catch (error) { res.status(500).json({ error: error.message }); }
-};
 
 // Admin handlers
 exports.getAllBookings = async (req, res) => {
