@@ -107,6 +107,38 @@ const CheckoutScreen = () => {
       });
       return;
     }
+
+    // --- Regex Validations ---
+    const nameRegex = /^[a-zA-ZÀ-ỹ\s]{2,50}$/;
+    if (!nameRegex.test(customerForm.name.trim())) {
+      setModalConfig({
+        visible: true, type: 'warning', title: 'Invalid Name',
+        message: 'Họ tên chỉ được chứa chữ cái (2-50 ký tự).',
+        onConfirm: () => setModalConfig({ ...modalConfig, visible: false })
+      });
+      return;
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(customerForm.email.trim())) {
+      setModalConfig({
+        visible: true, type: 'warning', title: 'Invalid Email',
+        message: 'Vui lòng nhập một địa chỉ email hợp lệ.',
+        onConfirm: () => setModalConfig({ ...modalConfig, visible: false })
+      });
+      return;
+    }
+
+    const phoneRegex = /(84|0[3|5|7|8|9])+([0-9]{8})\b/;
+    if (!phoneRegex.test(customerForm.phone.trim())) {
+      setModalConfig({
+        visible: true, type: 'warning', title: 'Invalid Phone',
+        message: 'Vui lòng nhập số điện thoại Việt Nam hợp lệ (10 số).',
+        onConfirm: () => setModalConfig({ ...modalConfig, visible: false })
+      });
+      return;
+    }
+
     setLoading(true);
     try {
       // Server calculates totalPrice from car pricePerDay + addOns + fees

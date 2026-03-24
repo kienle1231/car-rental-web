@@ -16,14 +16,6 @@ const {
 const { protect, adminOnly } = require('../middleware/auth');
 const router = express.Router();
 
-// Public/Customer Routes
-router.post('/', protect, createBooking);
-router.get('/my-bookings', protect, getMyBookings);
-router.get('/:id', protect, getBookingById);
-router.get('/availability/:carId', getAvailabilityByCar);
-router.post('/:id/extend', protect, extendBooking);
-router.patch('/:id/cancel', protect, cancelBooking);
-
 // Admin Routes
 router.get('/admin/stats', protect, adminOnly, getStats);
 router.get('/admin/availability', protect, adminOnly, getAvailabilityCalendar);
@@ -32,5 +24,12 @@ router.put('/admin/:id', protect, adminOnly, updateBookingStatus);
 router.patch('/admin/:id/complete', protect, adminOnly, completeBooking);
 router.delete('/admin/:id', protect, adminOnly, deleteBooking);
 
+// Public/Customer Routes
+router.post('/', protect, createBooking);
+router.get('/my-bookings', protect, getMyBookings);
+router.get('/:id', protect, getBookingById);
+router.get('/availability/:carId', getAvailabilityByCar);
+router.post('/:id/extend', protect, extendBooking);
+router.patch('/:id/cancel', protect, cancelBooking);
 
 module.exports = router;

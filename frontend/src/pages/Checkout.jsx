@@ -49,6 +49,25 @@ const Checkout = () => {
       toast.error('Please fill in required guest information.');
       return;
     }
+
+    const nameRegex = /^[a-zA-ZÀ-ỹ\s]{2,50}$/;
+    if (!nameRegex.test(customerForm.name.trim())) {
+      toast.error('Họ tên chỉ được chứa chữ cái (2-50 ký tự).');
+      return;
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(customerForm.email.trim())) {
+      toast.error('Vui lòng nhập một địa chỉ email hợp lệ.');
+      return;
+    }
+
+    const phoneRegex = /(84|0[3|5|7|8|9])+([0-9]{8})\b/;
+    if (!phoneRegex.test(customerForm.phone.trim())) {
+      toast.error('Vui lòng nhập số điện thoại Việt Nam hợp lệ (10 số).');
+      return;
+    }
+
     setProcessing(true);
     try {
       const payload = {
